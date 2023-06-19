@@ -52,10 +52,9 @@ class Account(AbstractUser):
     department = models.CharField(max_length=200, null=True)
     location = models.CharField(max_length=200, null=True)
     role = models.CharField(max_length=200, null=True)
-    avtar = models.ImageField(upload_to='photos/users', blank=True, null=True)
+    avtar = models.ImageField(upload_to='photos/users', blank=True)
     user_mode = models.CharField(max_length=20, default='normal', null=True)
     created_by = models.CharField(max_length=100, default='admin', null=True)
-    # userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     updated_by = models.CharField(max_length=100, default='admin', null=True)
     allowance_boost = models.IntegerField(default=200)
     points_available = models.IntegerField(default=0)  # under select points section, point given by company. CJ run

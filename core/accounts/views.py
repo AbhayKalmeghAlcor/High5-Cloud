@@ -1,8 +1,9 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import Account
-from .serializers import UserSerializer, UserSerializerWithToken,AccountSerializer , LogoutSerializer, \
-    ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer, EmailVerificationSerializer,RegisterSerializer,LoginSerializer
+from .serializers import UserSerializer, UserSerializerWithToken, AccountSerializer, LogoutSerializer, \
+    ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer, EmailVerificationSerializer, RegisterSerializer, \
+    LoginSerializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
@@ -55,7 +56,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
         return response
 
     def create(self, validated_data):
-        return UserProfile.objects.create(**validated_data)
+        return Account.objects.create(**validated_data)
 
 
 @api_view(['POST'])
@@ -215,8 +216,8 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
 
             redirect_url = request.data.get('redirect_url', '')
             absurl = 'http://' + current_site + relativeLink
-           # http: // localhost: 3000 / reset / password /: id
-            #absurl = 'http://' + 'localhost:3000/reset/password/' + relativeLink
+            # http: // localhost: 3000 / reset / password /: id
+            # absurl = 'http://' + 'localhost:3000/reset/password/' + relativeLink
             email_body = 'Hello, \n Use link below to reset your password  \n' + \
                          absurl + "?redirect_url=" + redirect_url
             data = {'email_body': email_body, 'to_email': user.email,
