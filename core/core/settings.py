@@ -145,20 +145,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
 DATABASES = {
 
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'test',
-        'USER': 'postgres',
-        'PASSWORD': 'Abhay786',
-        'HOST': 'localhost',
+        'ENGINE': 'django_tenants.postgresql_backend',
+        'NAME': 'postgres',
+        'USER': 'master',
+        'PASSWORD': '*cAzLT398wD5',
+        'HOST': 'alcor-dev-high5-cloud-postgres-rds.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
         'PORT': '5432',
-
     }
+
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.postgresql',
+    #     'NAME': 'test',
+    #     'USER': 'postgres',
+    #     'PASSWORD': 'Abhay786',
+    #     'HOST': 'localhost',
+    #     'PORT': '5432',
+    #
+    # }
 }
 
 # Password validation

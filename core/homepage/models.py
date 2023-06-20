@@ -35,14 +35,17 @@ class Posts(models.Model):
     react_by = models.JSONField(default=dict, null=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE)
     updated = models.DateField(auto_created=True)
+
     # updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, null=True)
     #  Parent Transaction ID   sub transaction
     #  Points Received - Number
 
+    class Meta:
+        verbose_name = 'posts'
+        verbose_name_plural = 'posts'
+
     def __str__(self):
         return "%s %s %s %s" % (self.point, self.recipients, self.comments, self.hashtags)
-
-
 
 # Create your models here.
 
