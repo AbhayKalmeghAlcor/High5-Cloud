@@ -147,14 +147,23 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
 
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.postgresql',
+    #     'NAME': 'postgres',
+    #     'USER': 'master',
+    #     'PASSWORD': '*cAzLT398wD5',
+    #     'HOST': 'alcor-dev-high5-cloud-postgres-rds.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
+    #     'PORT': '5432',
+    # }
+
     'default': {
-        'ENGINE': 'django_tenants.postgresql_backend',
-        'NAME': 'postgres',
-        'USER': 'master',
-        'PASSWORD': '*cAzLT398wD5',
-        'HOST': 'alcor-dev-high5-cloud-postgres-rds.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
-        'PORT': '5432',
-    }
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'high5cloud',
+            'USER': 'postgres',
+            'PASSWORD': 'Abhay786',
+            'HOST': 'database-high5-dev.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
+            'PORT': '5432',
+        }
 
     # 'default': {
     #     'ENGINE': 'django.db.backends.postgresql',

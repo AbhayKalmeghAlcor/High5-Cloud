@@ -22,6 +22,7 @@ class Comments(models.Model):
 class Posts(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     point = models.IntegerField(default=10, null=False)
+    #recipients = models.ForeignKey(Account, models.CASCADE)
     recipients = models.JSONField(default=list)
     sender = models.CharField(max_length=254)
     hashtags = models.JSONField(default=list, null=True)
