@@ -10,7 +10,7 @@ from django.utils.http import urlsafe_base64_decode
 
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField(read_only=True)
-   # _id = serializers.SerializerMethodField(read_only=True)
+    _id = serializers.SerializerMethodField(read_only=True)
     isAdmin = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -35,39 +35,17 @@ class UserSerializerWithToken(UserSerializer):
 
     class Meta:
         model = Account
-        fields = ['id', 'username', 'email', 'name', 'isAdmin', 'token']
+        fields = ['id', '_id', 'username', 'email', 'name', 'isAdmin', 'token']
 
     def get_token(self, obj):
         token = RefreshToken.for_user(obj)
         return str(token.access_token)
 
 
-# class UserprofileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = UserProfile
-#         fields = (
-#             'id', 'manager_email', 'hire_date', 'birth_date', 'country', 'department',
-#             'location', 'role', 'avtar', 'allowance_boost', 'user_mode')
-
-
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = '__all__'
-
-    # user = UserprofileSerializer()
-
-    # class Meta:
-    #     model = Account
-    #     fields = ['id', 'first_name', 'last_name', 'email', 'phone_number', 'is_admin', 'user']
-
-    # def get_userprofile_data(self, obj):
-    #     userprofile_serializer = UserprofileSerializer(obj.user)
-    #     return userprofile_serializer.data
-
-    # def get_company_data(self, obj):
-    #     company_serializer = CompanySerializer(obj.company)
-    #     return company_serializer.data
 
 
 class RegisterSerializer(serializers.ModelSerializer):
