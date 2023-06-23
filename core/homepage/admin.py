@@ -3,7 +3,7 @@ from .models import Posts, Comments, Properties, Company
 
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('point', 'recipients', 'sender', 'hashtags', 'comments')
+    list_display = ('point', 'recipients', 'sender', 'hashtags')
     list_display_links = ('point', 'recipients', 'sender')
 
 

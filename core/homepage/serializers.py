@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Posts, Comments, Company, Properties
 
 
-class CommentSerializer(serializers.ModelSerializer):
+class CommentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comments
         fields = '__all__'
@@ -15,16 +15,17 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    comment = CommentSerializer()
+    # comm = CommentsSerializer()
 
     class Meta:
         model = Posts
+        # field = '__all__'
         fields = ['point', 'recipients', 'sender', 'hashtags', 'image', 'gif', 'link', 'active',
-                  'flag_transaction', 'created', 'react_by', 'created_by', 'updated', 'comment']
+                  'flag_transaction', 'react_by', 'created_by','created', 'updated_by','updated',]
 
-    def get_comments_data(self, obj):
-        comment_serializer = CommentSerializer(obj.comment)
-        return comment_serializer.data
+    # def get_comments_data(self, obj):
+    #     comment_serializer = CommentsSerializer(obj.comm)
+    #     return comment_serializer.data
 
 
 class PropertiesSerializer(serializers.ModelSerializer):
