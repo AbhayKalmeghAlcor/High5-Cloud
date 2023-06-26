@@ -3,19 +3,10 @@ from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-6vbt(&%m_m*8+fy231hy%j3$xz^#&yu)b+g3kd07ha+(-(@tz3'
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = ['*']
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -39,7 +30,6 @@ REST_FRAMEWORK = {
     )
 }
 
-# Django project settings.py
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000"
 ]
@@ -146,24 +136,24 @@ DATABASES = {
     #     'PORT': '5432',
     # }
 
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'high5cloud',
-        'USER': 'postgres',
-        'PASSWORD': 'Abhay786',
-        'HOST': 'database-high5-dev.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
-        'PORT': '5432',
-    }
-
     # 'default': {
     #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'test',
+    #     'NAME': 'high5cloud',
     #     'USER': 'postgres',
     #     'PASSWORD': 'Abhay786',
-    #     'HOST': 'localhost',
+    #     'HOST': 'database-high5-dev.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
     #     'PORT': '5432',
-    #
     # }
+
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'test',
+        'USER': 'postgres',
+        'PASSWORD': 'Abhay786',
+        'HOST': 'localhost',
+        'PORT': '5432',
+
+    }
 }
 
 # Password validation

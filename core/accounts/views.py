@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import Account
 from .serializers import UserSerializer, UserSerializerWithToken, AccountSerializer, LogoutSerializer, \
     ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer, EmailVerificationSerializer, RegisterSerializer, \
-    LoginSerializer
+    LoginSerializer, AccountSubSerializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
@@ -32,6 +32,11 @@ class CustomRedirect(HttpResponsePermanentRedirect):
 class Accountuser(generics.ListAPIView):
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
+
+
+class AccountSubUser(generics.ListAPIView):
+    queryset = Account.objects.all()
+    serializer_class = AccountSubSerializer
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
