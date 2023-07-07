@@ -15,13 +15,13 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Account
-        fields = ["id", "date_joined", "first_name", "last_name", "username", "email", "manager_email",
+        fields = ["id","_id","name","date_joined", "first_name", "last_name", "username", "email", "manager_email",
                   "phone_number", "hire_date", "birth_date", "country", "department", "location", "role",
-                  "avtar", "user_mode", "created_by", "updated_by", "allowance_boost", "points_available"
+                  "avtar", "user_mode", "created_by", "updated_by", "allowance_boost", "points_available",
                                                                                        "points_received",
                   "points_redeemed", "achievements_notification", "activity_update_notification",
                   "allowance_notification", "bonus_notification", "comments_notification", "created_date", "last_login",
-                  "is_admin"]
+                  "is_admin", "isAdmin"]
 
     def get__id(self, obj):
         return obj.id
@@ -63,7 +63,8 @@ class AccountSubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = ["id", "first_name", "last_name", "email", "phone_number", "interest", "points_available",
-                  "birth_date", "hire_date", "avtar", "title", "department", "created_date", "updated_date"]
+                  "points_received", "points_redeemed", "birth_date", "hire_date", "avtar", "location","title", "department",
+                  "created_date", "updated_date"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):

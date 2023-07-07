@@ -136,6 +136,7 @@ DATABASES = {
     #     'PORT': '5432',
     # }
 
+
     # 'default': {
     #     'ENGINE': 'django.db.backends.postgresql',
     #     'NAME': 'high5cloud',
@@ -196,6 +197,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+FILE_UPLOAD_MAX_MEMORY_SIZE = 3145728
 
 
 EMAIL_USE_TLS = True

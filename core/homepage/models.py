@@ -1,6 +1,9 @@
 from django.db import models
 from accounts.models import Account
 import uuid
+from django.utils import timezone
+
+
 # from django.contrib.postgres.fields import ArrayField, JSONField
 # from django.db.models import JSONField
 # from rest_framework.renderers import JSONRenderer as JSONBField
@@ -8,21 +11,25 @@ import uuid
 
 class Posts(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    parent_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
     point = models.IntegerField(default=10, null=False)
-    recipients = models.JSONField(default=dict)
-    sender = models.JSONField(default=dict)
+    sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
+    recipients = models.ManyToManyField(Account, related_name='received_transfers')
+    # recipients = models.JSONField(default=dict)
+    # sender = models.JSONField(default=dict)
     hashtags = models.JSONField(default=list, null=True)
     message = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to='photos/user_form', null=True, blank=True, max_length=255)
+    image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
     link = models.CharField(max_length=500, null=True, blank=True)
     active = models.BooleanField(default=True)
     flag_transaction = models.BooleanField(default=False)
-    react_by = models.JSONField(default=dict, null=True,blank=True)
+    react_by = models.JSONField(default=dict, null=True, blank=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
     created = models.DateField(auto_created=True)
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
     updated = models.DateField(auto_created=True)
+
 
     class Meta:
         verbose_name = 'posts'
@@ -83,6 +90,15 @@ class Properties(models.Model):
         verbose_name = 'properties'
         verbose_name_plural = 'properties'
 
+
+class Recognition(models.Model):
+    employee = models.ForeignKey(Account, on_delete=models.CASCADE)
+    date = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Recognition for {self.employee} on {self.date}"
+
+
 # recipients = models.OneToOneField(Account, models.CASCADE)
 # recipients = JSONRenderer()
 # recipients = models.JSONBField(default=list, null=True, blank=True)
@@ -121,3 +137,13 @@ class Properties(models.Model):
 #     ("40", "40"),
 #     ("50", "50"),
 # )
+
+# class PointsTransfer(models.Model):
+#     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
+#     receivers = models.ManyToManyField(Account, related_name='received_transfers')
+#     points_available = models.PositiveIntegerField()
+#     points_received = models.PositiveIntegerField(default=0)
+
+
+    def __str__(self):
+        return f"{self.sender.username} -> {', '.join(self.receivers.values_list('username', flat=True))}"

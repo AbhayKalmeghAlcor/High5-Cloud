@@ -7,7 +7,8 @@ from .serializers import UserSerializer, UserSerializerWithToken, AccountSeriali
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
-from rest_framework import generics, status, permissions, views
+from rest_framework import generics, status, permissions, views, filters
+
 from rest_framework.response import Response
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, smart_bytes, DjangoUnicodeDecodeError
@@ -23,6 +24,13 @@ from django.conf import settings
 # from drf_yasg import openapi
 from .renderers import UserRenderer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import UserSerializer
+from rest_framework import viewsets
+from rest_framework.pagination import PageNumberPagination
+import django_filters
 
 
 class CustomRedirect(HttpResponsePermanentRedirect):
@@ -283,5 +291,40 @@ class LogoutAPIView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = Account.objects.all()
+#     serializer_class = AccountSubSerializer
+#     pagination_class = PageNumberPagination
+#     pagination_class.page_size = 1
+
+
+class UserListView(generics.ListAPIView):
+    serializer_class = AccountSubSerializer
+    queryset = Account.objects.all()
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 1
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['department', 'first_name', 'last_name', 'title', 'location']
+
+
+# class EmployeeFilter(django_filters.FilterSet):
+#     full_name = django_filters.CharFilter(lookup_expr='icontains')
+#     department = django_filters.CharFilter(lookup_expr='icontains')
+#     location = django_filters.CharFilter(lookup_expr='icontains')
+#
+#     class Meta:
+#         model = Account
+#         fields = ['full_name', 'department', 'location']
+
+#
+# class UserListView(generics.ListAPIView):
+#     serializer_class = AccountSubSerializer
+#     queryset = Account.objects.all()
+#     pagination_class = PageNumberPagination
+#     pagination_class.page_size = 1
+#     filter_backends = [filters.SearchFilter, django_filters.rest_framework.DjangoFilterBackend]
+#     filter_class = EmployeeFilter
+#     search_fields = ['full_name', 'department', 'location']

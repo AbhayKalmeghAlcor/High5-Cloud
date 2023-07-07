@@ -58,10 +58,10 @@ class Account(AbstractUser):
     created_by = models.CharField(max_length=100, default='admin', null=True)
     updated_by = models.CharField(max_length=100, default='admin', null=True)
     interest = models.JSONField(default=list)
-    allowance_boost = models.IntegerField(default=200)
-    points_available = models.IntegerField(default=0)  # under select points section, point given by company. CJ run
+    # allowance_boost = models.IntegerField(default=200)
+    points_available = models.IntegerField(default=170)  # under select points section, point given by company. CJ run
     points_received = models.IntegerField(default=0)  # part of 390 in design
-    points_redeemed = models.IntegerField(default=0)
+    points_redeemed = models.IntegerField(default=0)  #
     achievements_notification = models.BooleanField(default=True)
     activity_update_notification = models.BooleanField(default=True)
     allowance_notification = models.BooleanField(default=True)
@@ -96,3 +96,17 @@ class Account(AbstractUser):
 
     def has_module_perms(self, app_label):
         return True
+
+
+# from django.utils.text import slugify
+#
+#
+# def image_path(self, filename):
+#     extension = os.path.splitext(filename)[1][1:]
+#     file_name = os.path.splitext(filename)[0]
+#     url = "Users/%s/profile/%s.%s" % (self.user.id, slugify(str(file_name)), extension)
+#     return url
+
+# models.py
+
+

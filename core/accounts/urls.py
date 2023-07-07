@@ -1,9 +1,18 @@
 from django.urls import path, include
 from . import views
+from django.urls import include, path
+from rest_framework import routers
+from .views import UserListView
+
+#UserViewSet,
+#
+# router = routers.DefaultRouter()
+# router.register(r'users', UserViewSet)
+
 
 urlpatterns = [
-    path('accounts/getUsers/', views.Accountuser.as_view(), name='accounts-user'),
-    path('accounts/getUsers/profile/', views.AccountSubUser.as_view(), name='accounts-user-profile'),
+    path('getUsers/', views.Accountuser.as_view(), name='accounts-user'),
+    path('users/profile/', views.AccountSubUser.as_view(), name='accounts-user-profile'),
     path('login/', views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('register/', views.registerUser, name='register'),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),
@@ -21,5 +30,9 @@ urlpatterns = [
          name='password-reset-complete'),
     path('email/verify/', views.VerifyEmail.as_view(), name="email-verify"),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),
+    #path('api/', include(router.urls)),
+    path('user/search/', UserListView.as_view(), name='user-list'),
 
 ]
+
+
