@@ -6,22 +6,23 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListAPIView
-from datetime import date
 from django.db.models import Q
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime, date
 from rest_framework.pagination import PageNumberPagination, CursorPagination
 from django.db.models import Sum
 from django.db.models import Count
 from .paginations import CustomPagination, PaginationHandlerMixin
+from .utils import get_current_month_year, get_quaterly_dates
 
 from django.db import transaction
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 
 # from .models import PointsTransfer
@@ -136,142 +137,74 @@ class PostListView(generics.ListAPIView):
     # pagination_class = CursorPagination
 
 
-# thisMonth
-# lastMonth
-# lastQuarter
-# last6Months
-# last1Year
-
-# class Transaction(APIView):
-#     queryset = Posts.objects.all()
-#     serializer_class = PostSerializer
-
-
-# def _filter_orders(
-#
-#         business_id,
-#
-#         filter_type=None,
-#
-#         options=None,
-#
-#         custom_date1=None,
-#
-#         custom_date2=None,
-#
-# ):
-#      TODO: Optimization: We can merge this conditions
-#
-#     if options == "this_month":
-#
-#         this_month, this_year = get_current_month_year("this_month")
-#
-#         return get_filter_type(filter_type, business_id, this_month, this_year)
-#
-#
-#
-#
-#     elif options == "last_month":
-#
-#         p_month, p_year = get_current_month_year("last_month")
-#
-#         return get_filter_type(filter_type, business_id, p_month, p_year)
-#
-#
-#
-#
-#     elif options == "this_quarter":
-#
-#         first_date, last_date = get_quaterly_dates("this_quarter")
-#
-#         return get_filter(filter_type, business_id, first_date, last_date)
-#
-#
-#
-#
-#     elif options == "last_quarter":
-#
-#         first_date, last_date = get_quaterly_dates("last_quarter")
-#
-#         return get_filter(filter_type, business_id, first_date, last_date)
-#
-#
-#
-#
-#     elif options == "year_to_date":
-#
-#         current_date = datetime.now()
-#
-#         current_year = current_date.year
-#
-#         first_date = f"{current_year}-01-01"
-#
-#         return get_filter(filter_type, business_id, first_date, current_date)
-#
-#
-#
-#
-#     elif options == "custom_range":
-#
-#         return get_filter(filter_type, business_id, custom_date1, custom_date2)
-#
-#
-#
-#
-#     elif options == "last_7_days":
-#
-#         date2 = datetime.now()
-#
-#         date1 = date2 - timedelta(days=7)
-#
-#         return get_filter(filter_type, business_id, date1, date2)
-#
-#
 class Transaction(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [IsAuthenticated]
+
+    def _filter_by_datetime(self, date_range=None):
+        if date_range == "all":
+            return Posts.objects.all()
+
+        elif date_range == "this_month":
+            this_month, this_year = get_current_month_year("this_month")
+            return Posts.objects.filter(created__month=this_month, created__year=this_year)
+
+        elif date_range == "last_month":
+            p_month, p_year = get_current_month_year("last_month")
+            return Posts.objects.filter(created__month=p_month, created__year=p_year)
+
+        elif date_range == "this_quarter":
+            first_date, last_date = get_quaterly_dates("this_quarter")
+            return Posts.objects.filter(created__range=[first_date, last_date])
+
+        elif date_range == "last_quarter":
+            first_date, last_date = get_quaterly_dates("last_quarter")
+            return Posts.objects.filter(created__range=[first_date, last_date])
+
+        elif date_range == "year_to_date":
+            current_date = datetime.now()
+            current_year = current_date.year
+            first_date = f"{current_year}-01-01"
+            return Posts.objects.filter(created__range=[first_date, current_date])
 
     def get(self, request):
-
+        user = request.user
         sender = self.request.GET.get('sender', None)
         recipients = self.request.GET.get('recipients', None)
-        date_range = self.request.GET.get('date_range', None)
         pagination = self.request.GET.get('pagination', None)
-        qs = []
-        if sender:
-            qs = Posts.objects.filter(sender=sender)
 
-        if recipients:
-            qs = Posts.objects.filter(recipients=recipients)
+        # date_range all, this_month, last_month, this_quarter, last_quarter, year_to_date
+        date_range = request.GET.get("date_range", None)
 
-        if date_range == 'thisMonth':
-            thirty_days_ago = date.today() - timedelta(days=30)
-            qs = Posts.objects.filter(created__gte=thirty_days_ago)
+        # key_param all, popular, relevant
+        key_param = self.request.GET.get('key_param', None)
 
-        if date_range == 'lastMonth':
-            today = date.today()
-            last_month_end = date(today.year, today.month, 1) - timedelta(days=1)
-            last_month_start = date(last_month_end.year, last_month_end.month, 1)
-            qs = Posts.objects.filter(created__range=(last_month_start, last_month_end))
+        if date_range:
+            transaction_queryset = self._filter_by_datetime(date_range)
+        elif sender or recipients:
+            if sender:
+                transaction_queryset = Posts.objects.filter(sender=sender)
+            if recipients:
+                transaction_queryset = Posts.objects.filter(recipients=recipients)
+        elif key_param:
+            if key_param == 'popular':
+                transaction_queryset = Posts.objects.order_by('-point')
 
-        if date_range == 'lastQuarter':
-            one_year_ago = date.today() - timedelta(days=90)
-            qs = Posts.objects.filter(created__gte=one_year_ago)
+            elif key_param == 'relevant':
+                transaction_queryset = Posts.objects.filter(Q(sender=user.id) | Q(recipients=user.id))
 
-        if date_range == 'last6Months':
-            one_year_ago = date.today() - timedelta(days=183)
-            qs = Posts.objects.filter(created__gte=one_year_ago)
-
-        if date_range == 'last1Year':
-            one_year_ago = date.today() - timedelta(days=365)
-            qs = Posts.objects.filter(created__gte=one_year_ago)
+            elif key_param == 'all':
+                transaction_queryset = Posts.objects.all()
+        else:
+            transaction_queryset = Posts.objects.all()
 
         if pagination:
-            page = self.paginate_queryset(qs)
+            page = self.paginate_queryset(transaction_queryset)
             serializer = PostSerializer(page, many=True)
             return Response({"response": self.get_paginated_response(serializer.data).data})
 
-        serializer = PostSerializer(qs, many=True)
+        serializer = PostSerializer(transaction_queryset, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
