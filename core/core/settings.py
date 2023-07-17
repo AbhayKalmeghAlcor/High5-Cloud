@@ -136,13 +136,13 @@ DATABASES = {
     #     'PORT': '5432',
     # }
 
-
+    #
     # 'default': {
     #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'high5cloud',
+    #     'NAME': 'postgres',
     #     'USER': 'postgres',
     #     'PASSWORD': 'Abhay786',
-    #     'HOST': 'database-high5-dev.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
+    #     'HOST': 'database-high5-cloud-new.cjlu8mvrnu5r.ap-south-1.rds.amazonaws.com',
     #     'PORT': '5432',
     # }
 

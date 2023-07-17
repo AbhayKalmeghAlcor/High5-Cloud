@@ -20,7 +20,8 @@ urlpatterns = [
     path('profile/update/', views.updateUserProfile, name="user-profile-update"),
     path('', views.getUsers, name="users"),
     path('getUserDetails/<str:pk>/', views.getUserById, name='user'),
-    path('update/<str:pk>/', views.updateUser, name='user-update'),
+    path('editUserProfile/<str:pk>/', views.updateUser, name='user-update'),
+    path('updateUserAvtar/<str:pk>/', views.updateUserAvtar, name='user-avtar-update'),
     path('delete/<str:pk>/', views.deleteUser, name='user-delete'),
     path('request/password/', views.RequestPasswordResetEmail.as_view(),
          name="request-reset-email"),
@@ -30,8 +31,7 @@ urlpatterns = [
          name='password-reset-complete'),
     path('email/verify/', views.VerifyEmail.as_view(), name="email-verify"),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),
-    #path('api/', include(router.urls)),
-    path('user/search/', UserListView.as_view(), name='user-list'),
+    path('employees/', UserListView.as_view(), name='user-list'),
 
 ]
 

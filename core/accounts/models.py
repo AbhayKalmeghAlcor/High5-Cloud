@@ -84,9 +84,10 @@ class Account(AbstractUser):
 
     objects = MyAccountManager()
 
+    @property
     def full_name(self):
-        return "%s %s" % (self.first_name, self.last_name)
-        # return f'{self.first_name} {self.last_name}'
+        # return "%s %s" % (self.first_name, self.last_name)
+        return f'{self.first_name} {self.last_name}'
 
     def __str__(self):
         return self.email
@@ -96,7 +97,6 @@ class Account(AbstractUser):
 
     def has_module_perms(self, app_label):
         return True
-
 
 # from django.utils.text import slugify
 #
@@ -108,5 +108,3 @@ class Account(AbstractUser):
 #     return url
 
 # models.py
-
-

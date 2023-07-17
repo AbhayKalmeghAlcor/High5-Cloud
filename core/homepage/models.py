@@ -15,8 +15,6 @@ class Posts(models.Model):
     point = models.IntegerField(default=10, null=False)
     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
     recipients = models.ManyToManyField(Account, related_name='received_transfers')
-    # recipients = models.JSONField(default=dict)
-    # sender = models.JSONField(default=dict)
     hashtags = models.JSONField(default=list, null=True)
     message = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
@@ -26,10 +24,9 @@ class Posts(models.Model):
     flag_transaction = models.BooleanField(default=False)
     react_by = models.JSONField(default=dict, null=True, blank=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateField(auto_created=True)
+    created = models.DateTimeField(auto_created=True)
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateField(auto_created=True)
-
+    updated = models.DateTimeField(auto_created=True)
 
     class Meta:
         verbose_name = 'posts'
@@ -40,15 +37,18 @@ class Posts(models.Model):
 
 
 class Comments(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post_id = models.ForeignKey(Posts, on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
     comment = models.TextField(blank=True, null=True)
     react_by = models.JSONField(default=dict)
     flagged_comment = models.BooleanField(default=False)
+    image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
+    gif = models.CharField(max_length=500, null=True, blank=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateField(auto_created=True)
+    created = models.DateTimeField(auto_created=True)
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateField(auto_created=True, null=True, blank=True)
+    updated = models.DateTimeField(auto_created=True, null=True, blank=True)
 
     def __str__(self):
         return self.comment
@@ -81,10 +81,10 @@ class Properties(models.Model):
     email_birthday = models.EmailField(max_length=500)
     active = models.BooleanField(default=True)
     company = models.ForeignKey(Company, on_delete=models.DO_NOTHING)
-    created = models.DateField(auto_created=True)
+    created = models.DateTimeField(auto_created=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateField(auto_created=True, null=True)
+    updated = models.DateTimeField(auto_created=True, null=True)
 
     class Meta:
         verbose_name = 'properties'
@@ -97,7 +97,6 @@ class Recognition(models.Model):
 
     def __str__(self):
         return f"Recognition for {self.employee} on {self.date}"
-
 
 # recipients = models.OneToOneField(Account, models.CASCADE)
 # recipients = JSONRenderer()
@@ -144,6 +143,7 @@ class Recognition(models.Model):
 #     points_available = models.PositiveIntegerField()
 #     points_received = models.PositiveIntegerField(default=0)
 
-
-    def __str__(self):
-        return f"{self.sender.username} -> {', '.join(self.receivers.values_list('username', flat=True))}"
+# recipients = models.JSONField(default=dict)
+# sender = models.JSONField(default=dict)
+# points_available = models.PositiveIntegerField()
+# points_received = models.PositiveIntegerField(default=0)

@@ -31,6 +31,8 @@ from .serializers import UserSerializer
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
 import django_filters
+# from django.contrib.sites.models import Site
+from django.db.models import Q
 
 
 class CustomRedirect(HttpResponsePermanentRedirect):
@@ -126,10 +128,10 @@ def getUsers(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+# @permission_classes([IsAdminUser])
 def getUserById(request, pk):
     user = Account.objects.get(id=pk)
-    serializer = UserSerializer(user, many=False)
+    serializer = AccountSubSerializer(user, many=False)
     return Response(serializer.data)
 
 
@@ -141,10 +143,22 @@ def updateUser(request, pk):
     user.first_name = data['name']
     user.username = data['email']
     user.email = data['email']
+    user.avtar = data['avtar']
     user.is_staff = data['isAdmin']
     user.save()
-    serializer = UserSerializer(user, many=False)
+    serializer = AccountSubSerializer(user, many=False)
     return Response(serializer.data)
+
+
+@api_view(['PUT'])
+#@permission_classes([IsAuthenticated])
+def updateUserAvtar(request, pk):
+    user = Account.objects.get(id=pk)
+    data = request.data
+    user.avtar = data['avtar']
+    user.save()
+    serializer = AccountSubSerializer(user, many=False)
+    return Response({'Message': 'Avtar update successfully'})
 
 
 @api_view(['DELETE'])
@@ -182,10 +196,6 @@ class RegisterView(generics.GenericAPIView):
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
 
-    # token_param_config = openapi.Parameter(
-    #     'token', in_=openapi.IN_QUERY, description='Description', type=openapi.TYPE_STRING)
-    #
-    # @swagger_auto_schema(manual_parameters=[token_param_config])
     def get(self, request):
         token = request.GET.get('token')
         try:
@@ -224,6 +234,8 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
             token = PasswordResetTokenGenerator().make_token(user)
             current_site = get_current_site(
                 request=request).domain
+            # current_site = Site.objects.get_current().domain
+            print(current_site)
             relativeLink = reverse(
                 'password-reset-confirm', kwargs={'uidb64': uidb64, 'token': token})
 
@@ -283,6 +295,7 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
         return Response({'success': True, 'message': 'Password reset success'}, status=status.HTTP_200_OK)
 
 
+@permission_classes([IsAuthenticated])
 class LogoutAPIView(generics.GenericAPIView):
     serializer_class = LogoutSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -294,37 +307,96 @@ class LogoutAPIView(generics.GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class UserListView(generics.ListAPIView):
+    serializer_class = AccountSubSerializer
+    queryset = Account.objects.all()
+    pagination_class = PageNumberPagination
+    pagination_class.page_size = 2
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['department', 'first_name', 'last_name', 'location']
+
+    def _queryfy(self, search_terms=None, department_terms=None, location_terms=None):
+        if search_terms and department_terms and location_terms:
+            return Account.objects.filter(
+                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms)) & Q(department__icontains=department_terms) & Q(
+                    location__icontains=location_terms))
+
+        elif search_terms and department_terms:
+            return Account.objects.filter(
+                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms))  & Q(department__icontains=department_terms))
+
+        elif search_terms and location_terms:
+            return Account.objects.filter((Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms))  & Q(location__icontains=location_terms))
+
+        elif search_terms and location_terms:
+            return Account.objects.filter(
+                Q(department__icontains=department_terms) & Q(location__icontains=location_terms))
+
+        elif search_terms:
+            return Account.objects.filter(Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms))
+
+        elif department_terms:
+            return Account.objects.filter(department__icontains=department_terms)
+
+        elif location_terms:
+            return Account.objects.filter(location__icontains=location_terms)
+
+        else:
+            return Account.objects.all()
+
+    # if not search_terms and not department_terms and not location_terms:
+    def get_queryset(self):
+        queryset = Account.objects.all()
+        search_terms = self.request.query_params.get('user', None)
+        department_terms = self.request.query_params.get('department', None)
+        location_terms = self.request.query_params.get('location', None)
+        queryset = self._queryfy(search_terms, department_terms, location_terms)
+        return queryset
+
 # class UserViewSet(viewsets.ModelViewSet):
 #     queryset = Account.objects.all()
 #     serializer_class = AccountSubSerializer
 #     pagination_class = PageNumberPagination
 #     pagination_class.page_size = 1
 
-
-class UserListView(generics.ListAPIView):
-    serializer_class = AccountSubSerializer
-    queryset = Account.objects.all()
-    pagination_class = PageNumberPagination
-    pagination_class.page_size = 1
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['department', 'first_name', 'last_name', 'title', 'location']
-
+# @permission_classes([IsAuthenticated])
+# class UserListView(generics.ListAPIView):
+#     serializer_class = AccountSubSerializer
+#     queryset = Account.objects.all()
+#     pagination_class = PageNumberPagination
+#     pagination_class.page_size = 2
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['department', 'first_name', 'location']
+#
+#     def get_queryset(self):
+#         queryset = Account.objects.all()
+#         search_terms = self.request.query_params.get('search', None)
+#         department_terms = self.request.query_params.get('department', None)
+#         location_terms = self.request.query_params.get('location', None)
+#         if search_terms or department_terms or location_terms:
+#             queryset = queryset.filter(
+#                 Q(first_name__icontains=search_terms) |
+#                 Q(department__icontains= department_terms) |
+#                 Q(location__icontains= location_terms)
+#             )
+#
+#         return queryset
 
 # class EmployeeFilter(django_filters.FilterSet):
-#     full_name = django_filters.CharFilter(lookup_expr='icontains')
+#     #fullname = django_filters.CharFilter(lookup_expr='icontains')
 #     department = django_filters.CharFilter(lookup_expr='icontains')
 #     location = django_filters.CharFilter(lookup_expr='icontains')
 #
 #     class Meta:
 #         model = Account
-#         fields = ['full_name', 'department', 'location']
-
+#         fields = ['department', 'location']
+#
 #
 # class UserListView(generics.ListAPIView):
 #     serializer_class = AccountSubSerializer
 #     queryset = Account.objects.all()
 #     pagination_class = PageNumberPagination
-#     pagination_class.page_size = 1
+#     pagination_class.page_size = 2
 #     filter_backends = [filters.SearchFilter, django_filters.rest_framework.DjangoFilterBackend]
 #     filter_class = EmployeeFilter
-#     search_fields = ['full_name', 'department', 'location']
+#     #search_fields = ['department', 'location']

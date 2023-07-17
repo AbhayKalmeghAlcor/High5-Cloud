@@ -26,35 +26,30 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    sender = AccountSubSerializer()
-    image = serializers.ImageField(validators=[validate_image_size])
-
-    # recipients = AccountSubSerializer()
-
     class Meta:
         model = Posts
         fields = ['id', 'parent_id', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 'gif', 'link',
                   'active', 'flag_transaction', 'react_by', 'created_by', 'created', 'updated_by', 'updated']
-
-    def get_sender_data(self, obj):
-        sender_serializer = AccountSubSerializer(obj.sender)
-        return sender_serializer.data
 
     def to_representation(self, instance):
         response_data = super().to_representation(instance)
         recipients_data = response_data.get('recipients', [])
         recipients = Account.objects.filter(id__in=recipients_data)
         recipients_serializer = AccountSubSerializer(recipients, many=True)
+        # recipients_serializer_sender = AccountSubSerializer(sender,)
         response_data['recipients'] = recipients_serializer.data
+        response_data['sender'] = AccountSubSerializer(
+            Account.objects.filter(
+                id=response_data.get('sender')), many=True
+        ).data
         return response_data
 
-    # def validate_image_size(self, image):
-    #     # Adjust the desired image size here (in bytes)
-    #     max_size = 3 * 1024 * 1024  # 2 MB
-    #
-    #     if image.size > max_size:
-    #         raise serializers.ValidationError("Image size should not exceed 2 MB.")
-    #     return image
+    def validate_image(self, image):
+        # Check if the image size is more than 2MB (2 * 1024 * 1024 bytes)
+        if image.size > 2 * 1024 * 1024:
+            raise serializers.ValidationError("Image size should not exceed 2MB.")
+        return image
+
 
     # def get_recipients_data(self, obj):
     #     recipients_serializer = AccountSubSerializer(obj.recipients)
