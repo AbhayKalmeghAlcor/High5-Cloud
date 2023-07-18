@@ -33,6 +33,12 @@ class PostSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         response_data = super().to_representation(instance)
+        points = response_data.get('points', None)
+        try:
+            points = instance.points
+        except:
+            points = None
+        response_data["points"] = points
         recipients_data = response_data.get('recipients', [])
         recipients = Account.objects.filter(id__in=recipients_data)
         recipients_serializer = AccountSubSerializer(recipients, many=True)
@@ -44,11 +50,11 @@ class PostSerializer(serializers.ModelSerializer):
         ).data
         return response_data
 
-    def validate_image(self, image):
-        # Check if the image size is more than 2MB (2 * 1024 * 1024 bytes)
-        if image.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError("Image size should not exceed 2MB.")
-        return image
+    # def validate_image(self, image):
+    #     # Check if the image size is more than 2MB (2 * 1024 * 1024 bytes)
+    #     if image.size > 2 * 1024 * 1024:
+    #         raise serializers.ValidationError("Image size should not exceed 2MB.")
+    #     return image
 
 
     # def get_recipients_data(self, obj):

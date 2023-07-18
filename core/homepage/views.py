@@ -17,6 +17,9 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework import status, serializers
+from django.shortcuts import get_object_or_404
+from django.db.models import F
 
 
 class Index(generics.ListCreateAPIView):
@@ -79,6 +82,10 @@ class Transaction(APIView, PaginationHandlerMixin):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
 
+    def calculate_point(self, point, id):
+        points = [i.point for i in Posts.objects.filter(parent_id=id)]
+        return point+sum(points)
+
     def _filter_by_datetime(self, date_range=None):
         if date_range == "all":
             return Posts.objects.all()
@@ -133,7 +140,8 @@ class Transaction(APIView, PaginationHandlerMixin):
 
         elif key_param:
             if key_param == 'popular':
-                transaction_queryset = Posts.objects.order_by('-point')
+                transaction_queryset = Posts.objects.filter(parent_id=None).annotate(
+                    points=F('point')+self.calculate_point(F('point'), F('id'))).order_by("-points")
 
             elif key_param == 'relevant':
                 transaction_queryset = Posts.objects.filter(Q(sender=user.id) | Q(recipients=user.id))
@@ -147,7 +155,7 @@ class Transaction(APIView, PaginationHandlerMixin):
         if pagination:
             page = self.paginate_queryset(transaction_queryset)
             serializer = PostSerializer(page, many=True)
-            return Response({"response": self.get_paginated_response(serializer.data).data})
+            return Response(self.get_paginated_response(serializer.data).data)
 
         serializer = PostSerializer(transaction_queryset, many=True)
         return Response(serializer.data)
@@ -158,6 +166,30 @@ class Transaction(APIView, PaginationHandlerMixin):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        idd = request.data.get("id", None)
+        if not idd:
+            raise serializers.ValidationError({"id": "id is required."})
+        transaction_data = get_object_or_404(Posts, id=idd)
+        serializer = PostSerializer(instance=transaction_data, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(
+                {
+                    "status": "Success",
+                    "code": 9000,
+                    "message": "Successfully updated category data.",
+                    "response": serializer.data,
+                }, status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                "status": "Error",
+                "message": "Serializer validation error.",
+                "response": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class PointsTransferListCreateView(generics.ListCreateAPIView):

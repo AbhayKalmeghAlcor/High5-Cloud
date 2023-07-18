@@ -6,7 +6,7 @@ from django.utils import timezone
 
 class Posts(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    parent_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
+    parent_id = models.UUIDField(null=True, blank=True)
     point = models.IntegerField(default=10, null=False)
     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
     recipients = models.ManyToManyField(Account, related_name='received_transfers')
