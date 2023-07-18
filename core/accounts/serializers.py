@@ -56,7 +56,7 @@ class AccountSerializer(serializers.ModelSerializer):
                   "avtar", "user_mode", "created_by", "updated_by", "allowance_boost", "points_available",
                   "points_received", "points_redeemed", "achievements_notification", "activity_update_notification",
                   "allowance_notification", "bonus_notification", "comments_notification", "created_date", "last_login",
-                  "is_admin"]
+                  "is_admin","react"]
 
 
 class AccountSubSerializer(serializers.ModelSerializer):
@@ -65,7 +65,7 @@ class AccountSubSerializer(serializers.ModelSerializer):
         model = Account
         fields = ["id", "first_name", "last_name", "email", "phone_number", "interest", "points_available",
                   "points_received", "points_redeemed", "birth_date", "hire_date", "avtar", "location", "title",
-                  "department", "created_date", "updated_date", "full_name"]
+                  "department", "created_date", "updated_date", "full_name", "react"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):

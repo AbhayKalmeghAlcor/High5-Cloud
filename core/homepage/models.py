@@ -4,11 +4,6 @@ import uuid
 from django.utils import timezone
 
 
-# from django.contrib.postgres.fields import ArrayField, JSONField
-# from django.db.models import JSONField
-# from rest_framework.renderers import JSONRenderer as JSONBField
-
-
 class Posts(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     parent_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
@@ -24,9 +19,9 @@ class Posts(models.Model):
     flag_transaction = models.BooleanField(default=False)
     react_by = models.JSONField(default=dict, null=True, blank=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateTimeField(auto_created=True)
+    created = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_created=True)
+    updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'posts'
@@ -46,9 +41,9 @@ class Comments(models.Model):
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateTimeField(auto_created=True)
+    created = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_created=True, null=True, blank=True)
+    updated = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return self.comment
@@ -81,10 +76,10 @@ class Properties(models.Model):
     email_birthday = models.EmailField(max_length=500)
     active = models.BooleanField(default=True)
     company = models.ForeignKey(Company, on_delete=models.DO_NOTHING)
-    created = models.DateTimeField(auto_created=True)
+    created = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
     updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_created=True, null=True)
+    updated = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         verbose_name = 'properties'

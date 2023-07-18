@@ -7,9 +7,7 @@ from .serializers import UserSerializer, UserSerializerWithToken, AccountSeriali
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
-from rest_framework import generics, status, permissions, views, filters
-
-from rest_framework.response import Response
+from rest_framework import generics, permissions, views, filters
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -168,7 +166,7 @@ def deleteUser(request, pk):
     userForDeletion.delete()
     return Response('User was deleted')
 
-
+@permission_classes([IsAuthenticated])
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
     renderer_classes = (UserRenderer,)

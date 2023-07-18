@@ -1,32 +1,22 @@
 from .models import Posts, Properties, Comments
-from .serializers import PostSerializer, PropertiesSerializer, PropertiesSubSerializer, RecognitionSerializer, \
-    CommentsSerializer
-from rest_framework import generics, status, filters
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.filters import BaseFilterBackend
-from rest_framework.generics import ListAPIView
+from .serializers import PostSerializer, PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer
+from rest_framework import generics
 from django.db.models import Q
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
 from django.utils import timezone
 from datetime import timedelta, datetime, date
-from rest_framework.pagination import PageNumberPagination, CursorPagination
-from django.db.models import Sum
 from django.db.models import Count
 from .paginations import CustomPagination, PaginationHandlerMixin
-from .utils import get_current_month_year, get_quaterly_dates
-
+from .utils import get_current_month_year, get_quaterly_dates, get_last_six_month
 from django.db import transaction
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
+from rest_framework.decorators import authentication_classes, permission_classes, api_view
 from rest_framework.permissions import IsAuthenticated
-
-
-# from .models import PointsTransfer
-# from .serializers import PointsTransferSerializer
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class Index(generics.ListCreateAPIView):
@@ -52,7 +42,6 @@ class PropertySub(generics.ListCreateAPIView):
 class TodayEventView(APIView):
     def get(self, request):
         today = date.today()
-        # users = Account.objects.filter(birth_date__day=today.day, birth_date__month=today.month)
         users = Account.objects.filter(Q(birth_date__month=today.month, birth_date__day=today.day) |
                                        Q(hire_date__month=today.month, hire_date__day=today.day))
         serializer = AccountSubSerializer(users, many=True)
@@ -84,59 +73,7 @@ class TopEmployees(APIView):
         return Response(top_employees)
 
 
-class SenderReceiverFilterBackend(BaseFilterBackend):
-    def filter_queryset(self, request, queryset, view):
-        sender = request.query_params.get('sender')
-        recipients = request.query_params.get('recipients')
-        date_range = request.query_params.get('date_range')
-
-        if sender:
-            queryset = queryset.filter(sender=sender)
-
-        if recipients:
-            queryset = queryset.filter(recipients=recipients)
-
-        if date_range == 'thisMonth':
-            thirty_days_ago = date.today() - timedelta(days=30)
-            queryset = queryset.filter(created__gte=thirty_days_ago)
-
-        if date_range == 'lastMonth':
-            today = date.today()
-            last_month_end = date(today.year, today.month, 1) - timedelta(days=1)
-            last_month_start = date(last_month_end.year, last_month_end.month, 1)
-            queryset = queryset.filter(created__range=(last_month_start, last_month_end))
-            # thirty_days_ago = date.today() - timedelta(days=30)
-            # one_year_ago = thirty_days_ago - timedelta(days=365)
-            # queryset = queryset.filter(created__gte=one_year_ago)
-
-        if date_range == 'lastQuarter':
-            one_year_ago = date.today() - timedelta(days=90)
-            queryset = queryset.filter(created__gte=one_year_ago)
-
-        if date_range == 'last6Months':
-            one_year_ago = date.today() - timedelta(days=183)
-            queryset = queryset.filter(created__gte=one_year_ago)
-
-        if date_range == 'last1Year':
-            one_year_ago = date.today() - timedelta(days=365)
-            queryset = queryset.filter(created__gte=one_year_ago)
-
-        return queryset
-
-
-class PostListView(generics.ListAPIView):
-    queryset = Posts.objects.all()
-    serializer_class = PostSerializer
-    filter_backends = [SenderReceiverFilterBackend]
-    pagination_class = PageNumberPagination
-    pagination_class.page_size = 10
-    # filter_backends = [filters.SearchFilter]
-    # search_fields = ['sender__id']
-    # queryset = Posts.objects.all()
-    # serializer_class = PostSerializer
-    # pagination_class = CursorPagination
-
-
+@authentication_classes([JWTAuthentication])
 class Transaction(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
@@ -162,6 +99,10 @@ class Transaction(APIView, PaginationHandlerMixin):
             first_date, last_date = get_quaterly_dates("last_quarter")
             return Posts.objects.filter(created__range=[first_date, last_date])
 
+        elif date_range == "last_six_month":
+            last_six_month_date, current_date = get_last_six_month()
+            return Posts.objects.filter(created__range=[last_six_month_date, current_date])
+
         elif date_range == "year_to_date":
             current_date = datetime.now()
             current_year = current_date.year
@@ -170,11 +111,12 @@ class Transaction(APIView, PaginationHandlerMixin):
 
     def get(self, request):
         user = request.user
+        print(user.id)
         sender = self.request.GET.get('sender', None)
         recipients = self.request.GET.get('recipients', None)
         pagination = self.request.GET.get('pagination', None)
 
-        # date_range all, this_month, last_month, this_quarter, last_quarter, year_to_date
+        # date_range all, this_month, last_month, this_quarter, last_quarter, year_to_date, last_six_month
         date_range = request.GET.get("date_range", None)
 
         # key_param all, popular, relevant
@@ -182,11 +124,13 @@ class Transaction(APIView, PaginationHandlerMixin):
 
         if date_range:
             transaction_queryset = self._filter_by_datetime(date_range)
+
         elif sender or recipients:
             if sender:
                 transaction_queryset = Posts.objects.filter(sender=sender)
             if recipients:
                 transaction_queryset = Posts.objects.filter(recipients=recipients)
+
         elif key_param:
             if key_param == 'popular':
                 transaction_queryset = Posts.objects.order_by('-point')
@@ -196,6 +140,7 @@ class Transaction(APIView, PaginationHandlerMixin):
 
             elif key_param == 'all':
                 transaction_queryset = Posts.objects.all()
+
         else:
             transaction_queryset = Posts.objects.all()
 

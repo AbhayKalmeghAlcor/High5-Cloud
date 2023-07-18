@@ -29,7 +29,7 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Posts
         fields = ['id', 'parent_id', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 'gif', 'link',
-                  'active', 'flag_transaction', 'react_by', 'created_by', 'created', 'updated_by', 'updated']
+                  'active', 'flag_transaction', 'react_by', 'created_by', 'created', 'updated_by']
 
     def to_representation(self, instance):
         response_data = super().to_representation(instance)

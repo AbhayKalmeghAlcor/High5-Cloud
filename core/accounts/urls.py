@@ -1,13 +1,6 @@
-from django.urls import path, include
 from . import views
-from django.urls import include, path
-from rest_framework import routers
+from django.urls import path
 from .views import UserListView
-
-#UserViewSet,
-#
-# router = routers.DefaultRouter()
-# router.register(r'users', UserViewSet)
 
 
 urlpatterns = [
@@ -32,7 +25,4 @@ urlpatterns = [
     path('email/verify/', views.VerifyEmail.as_view(), name="email-verify"),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),
     path('employees/', UserListView.as_view(), name='user-list'),
-
 ]
-
-

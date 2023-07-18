@@ -1,9 +1,8 @@
 import datetime
-
 from dateutil import *
-from datetime import datetime as dt, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import datetime as dt, timedelta, date
 from math import ceil
+from dateutil.relativedelta import relativedelta
 
 
 def get_current_month_year(types):
@@ -35,3 +34,9 @@ def get_quaterly_dates(types):
     last_date = last_date.date()
 
     return first_date, last_date
+
+
+def get_last_six_month():
+    six_months = date.today() + relativedelta(months=-6)
+    current_date = dt.now()
+    return six_months, current_date
