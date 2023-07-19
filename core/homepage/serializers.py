@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Posts, Comments, Company, Properties, Recognition
+from .models import Posts, Company, Properties, Recognition,Comments
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
 from django.core.exceptions import ValidationError

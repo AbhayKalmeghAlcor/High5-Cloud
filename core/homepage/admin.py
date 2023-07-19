@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Posts, Comments, Properties, Company
+from .models import Posts, Properties, Company, Comments
 
 
 class PostAdmin(admin.ModelAdmin):
@@ -21,7 +21,7 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = ('name', 'company_type', 'description', 'created_date')
     list_display_links = ('name',)
 
-
+#
 admin.site.register(Comments, CommentAdmin)
 admin.site.register(Posts, PostAdmin)
 admin.site.register(Properties, PropertiesAdmin)

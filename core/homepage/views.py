@@ -32,6 +32,44 @@ class Comment(generics.ListCreateAPIView):
     serializer_class = CommentsSerializer
 
 
+class CommentApi(APIView):
+    def get(self, request):
+        comment = request.user
+        serializer = CommentsSerializer(comment, many=False)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CommentsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        idd = request.data.get("id", None)
+        if not idd:
+            raise serializers.ValidationError({"id": "id is required."})
+        transaction_data = get_object_or_404(Posts, id=idd)
+        serializer = CommentsSerializer(instance=transaction_data, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(
+                {
+                    "status": "Success",
+                    "code": 200,
+                    "message": "Successfully updated react data.",
+                    "response": serializer.data,
+                }, status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                "status": "Error",
+                "message": "Serializer validation error.",
+                "response": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST
+        )
+
+
 class Property(generics.ListCreateAPIView):
     queryset = Properties.objects.all()
     serializer_class = PropertiesSerializer
@@ -84,7 +122,7 @@ class Transaction(APIView, PaginationHandlerMixin):
 
     def calculate_point(self, point, id):
         points = [i.point for i in Posts.objects.filter(parent_id=id)]
-        return point+sum(points)
+        return point + sum(points)
 
     def _filter_by_datetime(self, date_range=None):
         if date_range == "all":
@@ -141,7 +179,7 @@ class Transaction(APIView, PaginationHandlerMixin):
         elif key_param:
             if key_param == 'popular':
                 transaction_queryset = Posts.objects.filter(parent_id=None).annotate(
-                    points=F('point')+self.calculate_point(F('point'), F('id'))).order_by("-points")
+                    points=F('point') + self.calculate_point(F('point'), F('id'))).order_by("-points")
 
             elif key_param == 'relevant':
                 transaction_queryset = Posts.objects.filter(Q(sender=user.id) | Q(recipients=user.id))
@@ -178,8 +216,8 @@ class Transaction(APIView, PaginationHandlerMixin):
             return Response(
                 {
                     "status": "Success",
-                    "code": 9000,
-                    "message": "Successfully updated category data.",
+                    "code": 200,
+                    "message": "Successfully updated react data.",
                     "response": serializer.data,
                 }, status=status.HTTP_200_OK
             )
