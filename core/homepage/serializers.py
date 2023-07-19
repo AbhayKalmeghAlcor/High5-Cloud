@@ -32,34 +32,126 @@ class PostSerializer(serializers.ModelSerializer):
                   'active', 'flag_transaction', 'react_by', 'created_by', 'created', 'updated_by']
 
     def to_representation(self, instance):
-        response_data = super().to_representation(instance)
-        points = response_data.get('points', None)
         try:
-            points = instance.points
+            return {
+                "id": instance.id,
+                "parent_id": instance.parent_id,
+                "point": instance.point,
+                "recipients": [{
+                    "id": val.id,
+                    "first_name": val.first_name,
+                    "last_name": val.last_name,
+                    "email": val.email,
+                    "phone_number": val.phone_number,
+                    "interest": val.interest,
+                    "points_available": val.points_available,
+                    "points_received": val.points_received,
+                    "points_redeemed": val.points_redeemed,
+                    "birth_date": val.birth_date,
+                    "hire_date": val.hire_date,
+                    "avtar": val.avtar.url,
+                    "location": val.location,
+                    "title": val.title,
+                    "department": val.department,
+                    "created_date": val.created_date,
+                    "updated_date": val.updated_date,
+                    "full_name": val.full_name,
+                    "react": val.react
+                } for val in instance.recipients.all()],
+                "sender": [{
+                    "id": instance.sender.id,
+                    "first_name":  instance.sender.first_name,
+                    "last_name":  instance.sender.last_name,
+                    "email":  instance.sender.email,
+                    "phone_number":  instance.sender.phone_number,
+                    "interest":  instance.sender.interest,
+                    "points_available":  instance.sender.points_available,
+                    "points_received":  instance.sender.points_received,
+                    "points_redeemed":  instance.sender.points_redeemed,
+                    "birth_date":  instance.sender.birth_date,
+                    "hire_date":  instance.sender.hire_date,
+                    "avtar":  instance.sender.avtar.url,
+                    "location":  instance.sender.location,
+                    "title":  instance.sender.title,
+                    "department":  instance.sender.department,
+                    "created_date":  instance.sender.created_date,
+                    "updated_date":  instance.sender.updated_date,
+                    "full_name":  instance.sender.full_name,
+                    "react":  instance.sender.react
+                }],
+                "message": instance.message,
+                "hashtags": instance.hashtags,
+                "image": instance.image.url if instance.image else None,
+                "gif": instance.gif,
+                "link": instance.link,
+                "active": instance.active,
+                "flag_transaction": instance.flag_transaction,
+                "react_by": instance.react_by,
+                "created_by": instance.created_by.id,
+                "created": instance.created,
+                "updated_by": instance.updated_by.id,
+                # "points": instance.points
+            }
         except:
-            points = None
-        response_data["points"] = points
-        recipients_data = response_data.get('recipients', [])
-        recipients = Account.objects.filter(id__in=recipients_data)
-        recipients_serializer = AccountSubSerializer(recipients, many=True)
-        # recipients_serializer_sender = AccountSubSerializer(sender,)
-        response_data['recipients'] = recipients_serializer.data
-        response_data['sender'] = AccountSubSerializer(
-            Account.objects.filter(
-                id=response_data.get('sender')), many=True
-        ).data
-        return response_data
-
-    # def validate_image(self, image):
-    #     # Check if the image size is more than 2MB (2 * 1024 * 1024 bytes)
-    #     if image.size > 2 * 1024 * 1024:
-    #         raise serializers.ValidationError("Image size should not exceed 2MB.")
-    #     return image
-
-
-    # def get_recipients_data(self, obj):
-    #     recipients_serializer = AccountSubSerializer(obj.recipients)
-    #     return recipients_serializer.data
+            return {
+                "id": instance['id'],
+                "parent_id": instance['parent_id'],
+                "point": instance['point'],
+                "recipients": [{
+                    "id": val.id,
+                    "first_name": val.first_name,
+                    "last_name": val.last_name,
+                    "email": val.email,
+                    "phone_number": val.phone_number,
+                    "interest": val.interest,
+                    "points_available": val.points_available,
+                    "points_received": val.points_received,
+                    "points_redeemed": val.points_redeemed,
+                    "birth_date": val.birth_date,
+                    "hire_date": val.hire_date,
+                    "avtar": val.avtar.url,
+                    "location": val.location,
+                    "title": val.title,
+                    "department": val.department,
+                    "created_date": val.created_date,
+                    "updated_date": val.updated_date,
+                    "full_name": val.full_name,
+                    "react": val.react
+                } for val in instance['recipients'].all()],
+                "sender": [{
+                    "id": instance['sender'].id,
+                    "first_name": instance['sender'].first_name,
+                    "last_name": instance['sender'].last_name,
+                    "email": instance['sender'].email,
+                    "phone_number": instance['sender'].phone_number,
+                    "interest": instance['sender'].interest,
+                    "points_available": instance['sender'].points_available,
+                    "points_received": instance['sender'].points_received,
+                    "points_redeemed": instance['sender'].points_redeemed,
+                    "birth_date": instance['sender'].birth_date,
+                    "hire_date": instance['sender'].hire_date,
+                    "avtar": instance['sender'].avtar.url,
+                    "location": instance['sender'].location,
+                    "title": instance['sender'].title,
+                    "department": instance['sender'].department,
+                    "created_date": instance['sender'].created_date,
+                    "updated_date": instance['sender'].updated_date,
+                    "full_name": instance['sender'].full_name,
+                    "react": instance['sender'].react,
+                }],
+                "message": instance['message'],
+                "hashtags": instance['hashtags'],
+                "image": instance['image'].url if instance['image'] else None,
+                "gif": instance['gif'],
+                "link": instance['link'],
+                "active": instance['active'],
+                "flag_transaction": instance['flag_transaction'],
+                "react_by": instance['react_by'],
+                "created_by": str(instance['created_by']),
+                "created": instance['created'],
+                "updated_by": str(instance['updated_by']),
+                "points": instance['points']
+            }
 
 
 class PropertiesSerializer(serializers.ModelSerializer):

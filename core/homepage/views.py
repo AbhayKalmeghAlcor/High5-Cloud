@@ -178,8 +178,30 @@ class Transaction(APIView, PaginationHandlerMixin):
 
         elif key_param:
             if key_param == 'popular':
-                transaction_queryset = Posts.objects.filter(parent_id=None).annotate(
-                    points=F('point') + self.calculate_point(F('point'), F('id'))).order_by("-points")
+                transaction_queryset = Posts.objects.filter(parent_id=None)
+                popular_list = []
+                for instance in transaction_queryset:
+                    popular_list.append({
+                        "id": instance.id,
+                        "parent_id": instance.parent_id,
+                        "point": instance.point,
+                        "recipients": instance.recipients,
+                        "sender": instance.sender,
+                        "message": instance.message,
+                        "hashtags": instance.hashtags,
+                        "image": instance.image.url if instance.image else None,
+                        "gif": instance.gif,
+                        "link": instance.link,
+                        "active": instance.active,
+                        "flag_transaction": instance.flag_transaction,
+                        "react_by": instance.react_by,
+                        "created_by": instance.created_by.id,
+                        "created": instance.created,
+                        "updated_by": instance.updated_by.id,
+                        "points": self.calculate_point(instance.point, instance.id)
+                    })
+                from operator import itemgetter
+                transaction_queryset = sorted(popular_list, key=itemgetter('points'), reverse=True)
 
             elif key_param == 'relevant':
                 transaction_queryset = Posts.objects.filter(Q(sender=user.id) | Q(recipients=user.id))
