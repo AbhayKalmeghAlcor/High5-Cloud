@@ -2,4 +2,4 @@ venv
 *.pyc
 *.xml
 .idea/
-
+.env

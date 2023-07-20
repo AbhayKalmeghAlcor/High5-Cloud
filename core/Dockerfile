@@ -1,0 +1,20 @@
+# Pull base image
+FROM python:3.10-slim-bullseye
+
+# Install dependencies for psycopg2
+RUN apt-get update && \
+    apt-get install -y libpq-dev gcc
+
+# Set up env variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Workdir
+WORKDIR /app
+
+#Install requirements
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy other files
+COPY . .
