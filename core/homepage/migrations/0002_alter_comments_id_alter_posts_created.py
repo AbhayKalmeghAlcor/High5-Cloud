@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='comments',
             name='id',
-            field=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=True),
+            field=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False),
         ),
         migrations.AlterField(
             model_name='posts',
