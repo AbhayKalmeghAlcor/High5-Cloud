@@ -1,30 +1,29 @@
-from .models import Posts, Properties, Comments
-from .serializers import PostSerializer, PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer
-from rest_framework import generics
-from django.db.models import Q
+from datetime import timedelta, datetime, date
+
+from django.db import transaction as db_transaction
+from django.db.models import Q, F, Count, Sum
+from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework import generics, status, serializers
+from rest_framework.decorators import authentication_classes, permission_classes, api_view
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.views import APIView
+
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from django.utils import timezone
-from datetime import timedelta, datetime, date
-from django.db.models import Count
-from .paginations import CustomPagination, PaginationHandlerMixin
-from .utils import get_current_month_year, get_quaterly_dates, get_last_six_month
-from django.db import transaction
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework import status
-from rest_framework.decorators import authentication_classes, permission_classes, api_view
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework import status, serializers
-from django.shortcuts import get_object_or_404
-from django.db.models import F
+from homepage.models import Transaction, Properties, Comments
+from homepage.paginations import CustomPagination, PaginationHandlerMixin
+from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer
+from homepage.utils import get_current_month_year, get_quaterly_dates, get_last_six_month
 
 
 class Index(generics.ListCreateAPIView):
-    queryset = Posts.objects.all()
-    serializer_class = PostSerializer
+    queryset = Transaction.objects.filter(active=True, parent=None)
+    serializer_class =  TransactionSerializer
 
 
 class Comment(generics.ListCreateAPIView):
@@ -49,7 +48,7 @@ class CommentApi(APIView):
         idd = request.data.get("id", None)
         if not idd:
             raise serializers.ValidationError({"id": "id is required."})
-        transaction_data = get_object_or_404(Posts, id=idd)
+        transaction_data = get_object_or_404(Transaction, id=idd)
         serializer = CommentsSerializer(instance=transaction_data, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -94,7 +93,7 @@ class TopEmployees(APIView):
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
         # Count the number of times each recipient received points
-        recipient_counts = Posts.objects.filter(
+        recipient_counts = Transaction.objects.filter(
             created__gte=thirty_days_ago
         ).values('recipients').annotate(
             count=Count('recipients')
@@ -115,6 +114,201 @@ class TopEmployees(APIView):
 
 
 @authentication_classes([JWTAuthentication])
+class TransactionView(APIView, PaginationHandlerMixin):
+    pagination_class = CustomPagination
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [IsAuthenticated]
+
+    def _filter_by_datetime(self, queryset, date_range):
+        if date_range == "all":
+            return queryset
+
+        elif date_range == "this_month":
+            this_month, this_year = get_current_month_year("this_month")
+            return queryset.filter(created__month=this_month, created__year=this_year)
+
+        elif date_range == "last_month":
+            p_month, p_year = get_current_month_year("last_month")
+            return queryset.filter(created__month=p_month, created__year=p_year)
+
+        elif date_range == "this_quarter":
+            first_date, last_date = get_quaterly_dates("this_quarter")
+            return queryset.filter(created__range=[first_date, last_date])
+
+        elif date_range == "last_quarter":
+            first_date, last_date = get_quaterly_dates("last_quarter")
+            return queryset.filter(created__range=[first_date, last_date])
+
+        elif date_range == "last_six_month":
+            last_six_month_date, current_date = get_last_six_month()
+            return queryset.filter(created__range=[last_six_month_date, current_date])
+
+        elif date_range == "year_to_date":
+            current_date = datetime.now()
+            current_year = current_date.year
+            first_date = f"{current_year}-01-01"
+            return queryset.filter(created__range=[first_date, current_date])
+
+
+    def get(self, request):
+        current_user_id = request.user.id
+        parent_transactions = Transaction.objects\
+            .filter(active=True)\
+            .prefetch_related(
+                'recipients',
+                'children',
+            ).select_related(
+                'sender',
+                'created_by',
+                'updated_by',
+            )
+
+        # Get query params from the get request
+        sender_id = self.request.GET.get('sender', None)
+        recipients_ids = self.request.GET.get('recipients', None)
+        pagination = self.request.GET.get('pagination', None)
+        date_range = request.GET.get("date_range", None)
+        key_param = self.request.GET.get('key_param', None)
+
+        # Filter by date range
+        if date_range:
+            parent_transactions = self._filter_by_datetime(parent_transactions, date_range)
+        
+        # Filter by sender
+        if sender_id:
+            parent_transactions = parent_transactions\
+                .filter(sender__id=sender_id)
+        
+        # Filter by recipeints
+        if recipients_ids:
+            parent_transactions = parent_transactions\
+                .filter(recipients__id__in=list(recipients_ids))
+        
+        # Filter by key_params
+        if key_param:
+            if key_param == "popular":
+                # We are using annotate and Coalesce function to calculate the sum of 
+                # children and parent's points and add it to a new queryset 
+                # field total_points.
+                parent_transactions = parent_transactions\
+                    .annotate(
+                        total_points=F('point') + Coalesce(Sum('children__point'), 0)
+                    )\
+                    .order_by('-total_points')
+            elif key_param == 'relevant':
+                parent_transactions = parent_transactions\
+                    .filter(
+                    Q(sender__id=current_user_id) | 
+                    Q(recipients__id=current_user_id)
+                )
+
+        # Pagination
+        if pagination:
+            parent_transactions = self.paginate_queryset(parent_transactions)
+        
+        response_data = TransactionSerializer(parent_transactions, many=True).data
+        return Response(response_data)
+
+
+    def post(self, request):
+        serializer = TransactionSerializer(data=request.data)
+        if serializer.is_valid():
+
+            sender_id = request.data.get('sender')
+            recipients_ids = request.data.getlist('recipients')
+            point = int(request.data.get('point', 0))
+
+            sender = get_object_or_404(Account, id=sender_id)
+            if sender.points_available < point:
+                return Response({'message': 'Insufficient points available.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not recipients_ids:
+                return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                with db_transaction.atomic():
+                    serializer.save()
+                    for recipient_id in recipients_ids:
+                        recipient = get_object_or_404(Account, id=recipient_id)
+                        recipient.points_received += point
+                        recipient.save()
+                    sender.points_available -= (point * len(recipients_ids))
+                    sender.save()
+
+            except Exception as e:
+                return Response({'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    def patch(self, request):
+        id = request.data.get("id", None)
+
+        if not id:
+            raise serializers.ValidationError({"id": "id is required."})
+        
+        transaction_data = get_object_or_404(Transaction, id=id)
+
+        serializer = TransactionSerializer(instance=transaction_data, data=request.data, partial=True)
+
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(
+                {
+                    "status": "Success",
+                    "code": 200,
+                    "message": "Successfully updated react data.",
+                    "response": serializer.data,
+                }, status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                "status": "Error",
+                "message": "Serializer validation error.",
+                "response": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class PointsTransferListCreateView(generics.ListCreateAPIView):
+    queryset = Transaction.objects.filter(active=True)
+    serializer_class = TransactionSerializer
+
+    @db_transaction.atomic
+    def perform_create(self, serializer):
+        sender = self.request.user
+        receivers_data = self.request.data.get('receivers', [])
+
+        total_points = int(self.request.data.get('points_available', 0))
+
+        num_receivers = len(receivers_data)
+        points_per_receiver = total_points // num_receivers
+        remaining_points = total_points % num_receivers
+
+        transfer = serializer.save(sender=sender, points_available=total_points)
+
+        for receiver_data in receivers_data:
+            receiver_id = receiver_data.get('id')
+            receiver = Account.objects.get(id=receiver_id)
+
+            points_to_receive = points_per_receiver
+            if remaining_points > 0:
+                points_to_receive += 1
+                remaining_points -= 1
+
+            receiver.points_received += points_to_receive
+            receiver.save()
+
+            transfer.receivers.add(receiver)
+
+        sender.points_available -= total_points
+        sender.save()
+
+
+# OLD CODE 
+"""@authentication_classes([JWTAuthentication])
 class Transaction(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
@@ -178,7 +372,7 @@ class Transaction(APIView, PaginationHandlerMixin):
 
         elif key_param:
             if key_param == 'popular':
-                transaction_queryset = Posts.objects.filter(parent_id=None)
+                transaction_queryset = Posts.objects.filter(parent_id=None, active=True)
                 popular_list = []
                 for instance in transaction_queryset:
                     popular_list.append({
@@ -211,6 +405,8 @@ class Transaction(APIView, PaginationHandlerMixin):
 
         else:
             transaction_queryset = Posts.objects.all()
+
+        transaction_queryset.prefetch_related('recipients').select_related('sender')
 
         if pagination:
             page = self.paginate_queryset(transaction_queryset)
@@ -249,39 +445,4 @@ class Transaction(APIView, PaginationHandlerMixin):
                 "message": "Serializer validation error.",
                 "response": serializer.errors,
             }, status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-class PointsTransferListCreateView(generics.ListCreateAPIView):
-    queryset = Posts.objects.all()
-    serializer_class = PostSerializer
-
-    @transaction.atomic
-    def perform_create(self, serializer):
-        sender = self.request.user
-        receivers_data = self.request.data.get('receivers', [])
-
-        total_points = int(self.request.data.get('points_available', 0))
-
-        num_receivers = len(receivers_data)
-        points_per_receiver = total_points // num_receivers
-        remaining_points = total_points % num_receivers
-
-        transfer = serializer.save(sender=sender, points_available=total_points)
-
-        for receiver_data in receivers_data:
-            receiver_id = receiver_data.get('id')
-            receiver = Account.objects.get(id=receiver_id)
-
-            points_to_receive = points_per_receiver
-            if remaining_points > 0:
-                points_to_receive += 1
-                remaining_points -= 1
-
-            receiver.points_received += points_to_receive
-            receiver.save()
-
-            transfer.receivers.add(receiver)
-
-        sender.points_available -= total_points
-        sender.save()
+        )"""

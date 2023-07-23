@@ -1,12 +1,17 @@
 from django.db import models
+
 from accounts.models import Account
-import uuid
-from django.utils import timezone
+from utils.models import BaseModel
 
 
-class Posts(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    parent_id = models.UUIDField(null=True, blank=True)
+class Transaction(BaseModel):
+    parent = parent = models.ForeignKey(
+        'self', 
+        related_name='children', 
+        null=True, 
+        blank=True, 
+        on_delete=models.CASCADE
+    )
     point = models.IntegerField(default=10, null=False)
     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
     recipients = models.ManyToManyField(Account, related_name='received_transfers')
@@ -18,32 +23,24 @@ class Posts(models.Model):
     active = models.BooleanField(default=True)
     flag_transaction = models.BooleanField(default=False)
     react_by = models.JSONField(default=dict, null=True, blank=True)
-    created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'posts'
-        verbose_name_plural = 'posts'
+        verbose_name = 'Transaction'
+        verbose_name_plural = 'Transactions'
+        ordering = ('-created',)
 
     def __str__(self):
         return "%s %s %s" % (self.point, self.recipients, self.hashtags)
 
 
-class Comments(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post_id = models.ForeignKey(Posts, on_delete=models.CASCADE, null=True)
+class Comments(BaseModel):
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
     comment = models.TextField(blank=True, null=True)
     react_by = models.JSONField(default=dict)
     flagged_comment = models.BooleanField(default=False)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
-    created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    created = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return self.comment
@@ -57,7 +54,7 @@ class Company(models.Model):
     name = models.CharField(max_length=255, null=False)
     company_type = models.CharField(max_length=255, null=True)
     description = models.TextField(default='', null=True)
-    created_date = models.DateTimeField(auto_now=True)
+    created_date = models.DateTimeField(auto_now_add=True)
     logo = models.ImageField(upload_to='company/logo', blank=True)
 
     class Meta:
@@ -84,61 +81,3 @@ class Properties(models.Model):
     class Meta:
         verbose_name = 'properties'
         verbose_name_plural = 'properties'
-
-
-class Recognition(models.Model):
-    employee = models.ForeignKey(Account, on_delete=models.CASCADE)
-    date = models.DateTimeField(default=timezone.now)
-
-    def __str__(self):
-        return f"Recognition for {self.employee} on {self.date}"
-
-# recipients = models.OneToOneField(Account, models.CASCADE)
-# recipients = JSONRenderer()
-# recipients = models.JSONBField(default=list, null=True, blank=True)
-# recipients = ArrayField(models.ForeignKey(Account, on_delete=models.DO_NOTHING))
-# hashtags = models.JSONField(
-#     max_length=30,
-#     choices=HASHTAG_CHOICES,
-#     # default='#OneTeam'
-# )
-
-# hashtags = ArrayField(
-#     models.CharField(max_length=100, blank=True),
-#     default=list(("OneTeam", "Vision", "Collaboration", "Culture", "Training", "Quality", "ProblemSolving",
-#                   "Teambuilding")))
-
-# monthly_allowance = models.IntegerField(default=200)
-# points_given = models.CharField(
-#     max_length=3,
-#     choices=POINT_CHOICES,
-#     default='10'
-# )
-
-# HASHTAG_CHOICES = (
-#     ("#OneTeam", "#OneTeam"),
-#     ("#Vision", "#Vision"),
-#     ("#Collaboration", "#Collaboration"),
-#     ("#Culture", "#Culture"),
-#     ("#Training", "#Quality"),
-#     ("#ProblemSolving", "#ProblemSolving"),
-#     ("#Teambuilding", "#Teambuilding"),
-# )
-# POINT_CHOICES = (
-#     ("10", "10"),
-#     ("20", "20"),
-#     ("30", "30"),
-#     ("40", "40"),
-#     ("50", "50"),
-# )
-
-# class PointsTransfer(models.Model):
-#     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
-#     receivers = models.ManyToManyField(Account, related_name='received_transfers')
-#     points_available = models.PositiveIntegerField()
-#     points_received = models.PositiveIntegerField(default=0)
-
-# recipients = models.JSONField(default=dict)
-# sender = models.JSONField(default=dict)
-# points_available = models.PositiveIntegerField()
-# points_received = models.PositiveIntegerField(default=0)
