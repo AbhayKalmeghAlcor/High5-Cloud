@@ -4,6 +4,13 @@ from accounts.models import Account
 from utils.models import BaseModel
 
 
+class Hashtag(BaseModel):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Transaction(BaseModel):
     parent = parent = models.ForeignKey(
         'self', 
@@ -15,7 +22,7 @@ class Transaction(BaseModel):
     point = models.IntegerField(default=10, null=False)
     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
     recipients = models.ManyToManyField(Account, related_name='received_transfers')
-    hashtags = models.JSONField(default=list, null=True)
+    hashtags = models.ManyToManyField(Hashtag, blank=True)
     message = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)

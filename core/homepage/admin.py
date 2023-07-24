@@ -1,10 +1,19 @@
 from django.contrib import admin
-from .models import Transaction, Properties, Company, Comments
+from .models import Transaction, Properties, Company, Comments, Hashtag
+
+
+class HashtagAdmin(admin.ModelAdmin):
+    list_display = ('name',)
 
 
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('point',  'hashtags')
+    list_display = ('point',  'get_hashtags')
     list_display_links = ('point', )
+
+    def get_hashtags(self, obj):
+        return ", ".join(hashtag.name for hashtag in obj.hashtags.all())
+
+    get_hashtags.short_description = 'Hashtags'
 
 
 class CommentAdmin(admin.ModelAdmin):
@@ -26,3 +35,4 @@ admin.site.register(Comments, CommentAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Properties, PropertiesAdmin)
 admin.site.register(Company, CompanyAdmin)
+admin.site.register(Hashtag, HashtagAdmin)

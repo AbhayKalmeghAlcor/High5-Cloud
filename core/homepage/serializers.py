@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Company, Properties, Comments, Transaction
+from homepage.models import Company, Properties, Comments, Transaction, Hashtag
 
 
 def validate_image_size(image):
@@ -26,12 +26,19 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class HashtagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hashtag
+        fields = ['name']
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField('get_children')
     recipients = AccountSubSerializer(many=True, read_only=True)
     sender = AccountSubSerializer(read_only=True)
     created_by = AccountSubSerializer(read_only=True)
     updated_by = AccountSubSerializer(read_only=True)
+    hashtags = HashtagSerializer(read_only=True, many=True)
 
     def get_children(self, transaction):
         children = Transaction.objects.filter(parent=transaction, active=True)
