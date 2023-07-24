@@ -113,11 +113,11 @@ class TopEmployees(APIView):
         return Response(top_employees)
 
 
-#@authentication_classes([JWTAuthentication])
+@authentication_classes([JWTAuthentication])
 class TransactionView(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def _filter_by_datetime(self, queryset, date_range):
         if date_range == "all":
