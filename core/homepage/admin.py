@@ -1,8 +1,8 @@
 from django.contrib import admin
-from .models import Posts, Properties, Company, Comments
+from .models import Transaction, Properties, Company, Comments
 
 
-class PostAdmin(admin.ModelAdmin):
+class TransactionAdmin(admin.ModelAdmin):
     list_display = ('point',  'hashtags')
     list_display_links = ('point', )
 
@@ -23,6 +23,6 @@ class CompanyAdmin(admin.ModelAdmin):
 
 #
 admin.site.register(Comments, CommentAdmin)
-admin.site.register(Posts, PostAdmin)
+admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Properties, PropertiesAdmin)
 admin.site.register(Company, CompanyAdmin)
