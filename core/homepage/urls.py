@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import Index, Property, TodayEventView, TopEmployees, TransactionView, PointsTransferListCreateView,\
-    CommentApi, Comment
+from .views import Index, Property, TodayEventView, TopEmployees, TransactionView, CommentApi, Comment
 
 urlpatterns = [
     path('homepage/transaction/', Index.as_view(), name='index'),
@@ -11,5 +10,4 @@ urlpatterns = [
     path('comments/', Comment.as_view(), name='api-post-sender-receiver'),
     path('transaction/comments/', CommentApi.as_view(), name='api-post-sender-receiver'),
     path('transaction/', TransactionView.as_view(), name='sender-receiver'),
-    path('points/transfer/', PointsTransferListCreateView.as_view(), name='create_points_transfer'),
 ]

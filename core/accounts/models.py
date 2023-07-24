@@ -98,14 +98,3 @@ class Account(AbstractUser):
 
     def has_module_perms(self, app_label):
         return True
-
-# from django.utils.text import slugify
-#
-#
-# def image_path(self, filename):
-#     extension = os.path.splitext(filename)[1][1:]
-#     file_name = os.path.splitext(filename)[0]
-#     url = "Users/%s/profile/%s.%s" % (self.user.id, slugify(str(file_name)), extension)
-#     return url
-
-# models.py

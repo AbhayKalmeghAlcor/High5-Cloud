@@ -1,5 +1,4 @@
 from django.db import models
-
 from accounts.models import Account
 from utils.models import BaseModel
 
@@ -13,10 +12,10 @@ class Hashtag(BaseModel):
 
 class Transaction(BaseModel):
     parent = parent = models.ForeignKey(
-        'self', 
-        related_name='children', 
-        null=True, 
-        blank=True, 
+        'self',
+        related_name='children',
+        null=True,
+        blank=True,
         on_delete=models.CASCADE
     )
     point = models.IntegerField(default=10, null=False)
@@ -57,11 +56,11 @@ class Comments(BaseModel):
         verbose_name_plural = 'comments'
 
 
-class Company(models.Model):
+class Company(BaseModel):
     name = models.CharField(max_length=255, null=False)
     company_type = models.CharField(max_length=255, null=True)
     description = models.TextField(default='', null=True)
-    created_date = models.DateTimeField(auto_now_add=True)
+    # created_date = models.DateTimeField(auto_now_add=True)
     logo = models.ImageField(upload_to='company/logo', blank=True)
 
     class Meta:
@@ -72,7 +71,7 @@ class Company(models.Model):
         return self.name
 
 
-class Properties(models.Model):
+class Properties(BaseModel):
     monthly_allowance = models.IntegerField(default=170)
     birthday_points = models.IntegerField(default=50)
     anniversary_points = models.IntegerField(default=50)
@@ -80,10 +79,10 @@ class Properties(models.Model):
     email_birthday = models.EmailField(max_length=500)
     active = models.BooleanField(default=True)
     company = models.ForeignKey(Company, on_delete=models.DO_NOTHING)
-    created = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
-    updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
-    updated = models.DateTimeField(auto_now=True, null=True)
+    # created = models.DateTimeField(auto_now=True)
+    # created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+')
+    # updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='+', null=True)
+    # updated = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         verbose_name = 'properties'
