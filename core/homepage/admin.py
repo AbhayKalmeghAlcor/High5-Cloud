@@ -1,10 +1,15 @@
 from django.contrib import admin
-from .models import Posts, Properties, Company, Comments
+from .models import Posts, Properties, Company, Comments, Userpoints
 
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('point',  'hashtags')
-    list_display_links = ('point', )
+    list_display = ('point', 'hashtags')
+    list_display_links = ('point',)
+
+
+class UserPointsAdmin(admin.ModelAdmin):
+    list_display = ('user', 'monthly_points')
+    list_display_links = ('user',)
 
 
 class CommentAdmin(admin.ModelAdmin):
@@ -21,8 +26,9 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = ('name', 'company_type', 'description', 'created_date')
     list_display_links = ('name',)
 
-#
+
 admin.site.register(Comments, CommentAdmin)
 admin.site.register(Posts, PostAdmin)
 admin.site.register(Properties, PropertiesAdmin)
 admin.site.register(Company, CompanyAdmin)
+admin.site.register(Userpoints, UserPointsAdmin)

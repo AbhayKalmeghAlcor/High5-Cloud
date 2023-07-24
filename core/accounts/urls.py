@@ -20,7 +20,7 @@ urlpatterns = [
          name="request-reset-email"),
     path('passwordreset/<uidb64>/<token>/',
          views.PasswordTokenCheckAPI.as_view(), name='password-reset-confirm'),
-    path('passwordreset/complete', views.SetNewPasswordAPIView.as_view(),
+    path('passwordreset/complete/', views.SetNewPasswordAPIView.as_view(),
          name='password-reset-complete'),
     path('email/verify/', views.VerifyEmail.as_view(), name="email-verify"),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),

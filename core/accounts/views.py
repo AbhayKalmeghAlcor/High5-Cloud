@@ -21,7 +21,7 @@ from django.conf import settings
 # from drf_yasg.utils import swagger_auto_schema
 # from drf_yasg import openapi
 from .renderers import UserRenderer
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -149,7 +149,7 @@ def updateUser(request, pk):
 
 
 @api_view(['PUT'])
-#@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def updateUserAvtar(request, pk):
     user = Account.objects.get(id=pk)
     data = request.data
@@ -165,6 +165,7 @@ def deleteUser(request, pk):
     userForDeletion = Account.objects.get(id=pk)
     userForDeletion.delete()
     return Response('User was deleted')
+
 
 @permission_classes([IsAuthenticated])
 class RegisterView(generics.GenericAPIView):
@@ -293,16 +294,34 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
         return Response({'success': True, 'message': 'Password reset success'}, status=status.HTTP_200_OK)
 
 
-@permission_classes([IsAuthenticated])
-class LogoutAPIView(generics.GenericAPIView):
-    serializer_class = LogoutSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+class LogoutAPIView(APIView):
+    #permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            RefreshToken(refresh_token).blacklist()
+
+        except TokenError:
+            return Response({'error': 'Token is expired or invalid'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+
+#
+# # @permission_classes([IsAuthenticated])
+# class LogoutAPIView(generics.GenericAPIView):
+#     serializer_class = LogoutSerializer
+#
+#     # permission_classes = (permissions.IsAuthenticated,)
+#
+#     def post(self, request):
+#         serializer = self.serializer_class(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserListView(generics.ListAPIView):
@@ -316,15 +335,19 @@ class UserListView(generics.ListAPIView):
     def _queryfy(self, search_terms=None, department_terms=None, location_terms=None):
         if search_terms and department_terms and location_terms:
             return Account.objects.filter(
-                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms)) & Q(department__icontains=department_terms) & Q(
+                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms)) & Q(
+                    department__icontains=department_terms) & Q(
                     location__icontains=location_terms))
 
         elif search_terms and department_terms:
             return Account.objects.filter(
-                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms))  & Q(department__icontains=department_terms))
+                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms)) & Q(
+                    department__icontains=department_terms))
 
         elif search_terms and location_terms:
-            return Account.objects.filter((Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms))  & Q(location__icontains=location_terms))
+            return Account.objects.filter(
+                (Q(first_name__icontains=search_terms) | Q(last_name__icontains=search_terms)) & Q(
+                    location__icontains=location_terms))
 
         elif search_terms and location_terms:
             return Account.objects.filter(

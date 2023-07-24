@@ -2,6 +2,7 @@ from django.db import models
 from accounts.models import Account
 import uuid
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 
 class Posts(models.Model):
@@ -26,6 +27,7 @@ class Posts(models.Model):
     class Meta:
         verbose_name = 'posts'
         verbose_name_plural = 'posts'
+        ordering = ('-created', 'active')
 
     def __str__(self):
         return "%s %s %s" % (self.point, self.recipients, self.hashtags)
@@ -36,7 +38,7 @@ class Comments(models.Model):
     post_id = models.ForeignKey(Posts, on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
     comment = models.TextField(blank=True, null=True)
-    react_by = models.JSONField(default=dict)
+    react_by = models.JSONField(default=dict, null=True, blank=True)
     flagged_comment = models.BooleanField(default=False)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
@@ -86,59 +88,23 @@ class Properties(models.Model):
         verbose_name_plural = 'properties'
 
 
-class Recognition(models.Model):
-    employee = models.ForeignKey(Account, on_delete=models.CASCADE)
-    date = models.DateTimeField(default=timezone.now)
+class Userpoints(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    active = models.BooleanField(default=True)
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    monthly_points = models.IntegerField()
+    created = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='%(class)s_created_by')
+    updated = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='%(class)s_updated_by')
+
+    class Meta:
+        verbose_name = 'userpoints'
+        verbose_name_plural = 'userpoints'
 
     def __str__(self):
-        return f"Recognition for {self.employee} on {self.date}"
+        return f'{self.user.email} - Points: {self.monthly_points}'
 
-# recipients = models.OneToOneField(Account, models.CASCADE)
-# recipients = JSONRenderer()
-# recipients = models.JSONBField(default=list, null=True, blank=True)
-# recipients = ArrayField(models.ForeignKey(Account, on_delete=models.DO_NOTHING))
-# hashtags = models.JSONField(
-#     max_length=30,
-#     choices=HASHTAG_CHOICES,
-#     # default='#OneTeam'
-# )
 
-# hashtags = ArrayField(
-#     models.CharField(max_length=100, blank=True),
-#     default=list(("OneTeam", "Vision", "Collaboration", "Culture", "Training", "Quality", "ProblemSolving",
-#                   "Teambuilding")))
 
-# monthly_allowance = models.IntegerField(default=200)
-# points_given = models.CharField(
-#     max_length=3,
-#     choices=POINT_CHOICES,
-#     default='10'
-# )
 
-# HASHTAG_CHOICES = (
-#     ("#OneTeam", "#OneTeam"),
-#     ("#Vision", "#Vision"),
-#     ("#Collaboration", "#Collaboration"),
-#     ("#Culture", "#Culture"),
-#     ("#Training", "#Quality"),
-#     ("#ProblemSolving", "#ProblemSolving"),
-#     ("#Teambuilding", "#Teambuilding"),
-# )
-# POINT_CHOICES = (
-#     ("10", "10"),
-#     ("20", "20"),
-#     ("30", "30"),
-#     ("40", "40"),
-#     ("50", "50"),
-# )
-
-# class PointsTransfer(models.Model):
-#     sender = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='sent_transfers')
-#     receivers = models.ManyToManyField(Account, related_name='received_transfers')
-#     points_available = models.PositiveIntegerField()
-#     points_received = models.PositiveIntegerField(default=0)
-
-# recipients = models.JSONField(default=dict)
-# sender = models.JSONField(default=dict)
-# points_available = models.PositiveIntegerField()
-# points_received = models.PositiveIntegerField(default=0)

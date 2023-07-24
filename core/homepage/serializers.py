@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Posts, Company, Properties, Recognition,Comments
+from .models import Posts, Company, Properties, Comments, Userpoints
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
 from django.core.exceptions import ValidationError
@@ -56,7 +56,6 @@ class PostSerializer(serializers.ModelSerializer):
     #         raise serializers.ValidationError("Image size should not exceed 2MB.")
     #     return image
 
-
     # def get_recipients_data(self, obj):
     #     recipients_serializer = AccountSubSerializer(obj.recipients)
     #     return recipients_serializer.data
@@ -88,15 +87,7 @@ class PropertiesSerializer(serializers.ModelSerializer):
         return company_serializer.data
 
 
-class PropertiesSubSerializer(serializers.ModelSerializer):
-    company = CompanySerializer()
-
+class UserPointsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Properties
-        fields = '__all__'
-
-
-class RecognitionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Recognition
+        model = Userpoints
         fields = '__all__'
