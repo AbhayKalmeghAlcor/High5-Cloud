@@ -157,6 +157,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
             .prefetch_related(
                 'recipients',
                 'children',
+                'hashtags',
             ).select_related(
                 'sender',
                 'created_by',
@@ -169,6 +170,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
         pagination = self.request.GET.get('pagination', None)
         date_range = request.GET.get("date_range", None)
         key_param = self.request.GET.get('key_param', None)
+        hashtags_param = request.GET.get('hashtags', None)
 
         # Filter by date range
         if date_range:
@@ -201,6 +203,13 @@ class TransactionView(APIView, PaginationHandlerMixin):
                     Q(sender__id=current_user_id) | 
                     Q(recipients__id=current_user_id)
                 )
+
+        # Filter by hashtags
+        if hashtags_param:
+            hashtags_names = hashtags_param.split(',')
+
+            parent_transactions = parent_transactions\
+                .filter(hashtags__name__in=hashtags_names)
 
         # Pagination
         if pagination:
