@@ -113,11 +113,11 @@ class TopEmployees(APIView):
         return Response(top_employees)
 
 
-@authentication_classes([JWTAuthentication])
+#@authentication_classes([JWTAuthentication])
 class TransactionView(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
 
     def _filter_by_datetime(self, queryset, date_range):
         if date_range == "all":
@@ -153,7 +153,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
     def get(self, request):
         current_user_id = request.user.id
         parent_transactions = Transaction.objects\
-            .filter(active=True)\
+            .filter(active=True, parent=None)\
             .prefetch_related(
                 'recipients',
                 'children',
@@ -180,11 +180,12 @@ class TransactionView(APIView, PaginationHandlerMixin):
         if sender_id:
             parent_transactions = parent_transactions\
                 .filter(sender__id=sender_id)
-        
+
         # Filter by recipeints
         if recipients_ids:
+            recipients_ids_list = recipients_ids.split(',')
             parent_transactions = parent_transactions\
-                .filter(recipients__id__in=list(recipients_ids))
+                .filter(recipients__id__in=recipients_ids_list)
         
         # Filter by key_params
         if key_param:
