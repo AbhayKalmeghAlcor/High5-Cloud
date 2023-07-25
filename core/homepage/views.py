@@ -221,7 +221,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
 
     def post(self, request):
-        serializer = TransactionSerializer(data=request.data)
+        serializer = TransactionSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
 
             sender_id = request.data.get('sender')
