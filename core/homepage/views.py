@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime, date
+
 from django.db import transaction as db_transaction
 from django.db.models import Q, F, Count, Sum
 from django.db.models.functions import Coalesce
@@ -11,17 +12,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.views import APIView
+
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from .models import Transaction, Properties, Comments
-from .paginations import CustomPagination, PaginationHandlerMixin
-from .serializers import PropertiesSerializer, CommentsSerializer, TransactionSerializer
-from .utils import get_current_month_year, get_quaterly_dates, get_last_six_month
+from homepage.models import Transaction, Properties, Comments
+from homepage.paginations import CustomPagination, PaginationHandlerMixin
+from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer
+from homepage.utils import get_current_month_year, get_quaterly_dates, get_last_six_month
 
 
 class Index(generics.ListCreateAPIView):
     queryset = Transaction.objects.filter(active=True, parent=None)
-    serializer_class = TransactionSerializer
+    serializer_class =  TransactionSerializer
 
 
 class Comment(generics.ListCreateAPIView):
@@ -72,9 +74,9 @@ class Property(generics.ListCreateAPIView):
     serializer_class = PropertiesSerializer
 
 
-# class PropertySub(generics.ListCreateAPIView):
-#     queryset = Properties.objects.all()
-#     serializer_class = PropertiesSubSerializer
+class PropertySub(generics.ListCreateAPIView):
+    queryset = Properties.objects.all()
+    serializer_class = PropertiesSubSerializer
 
 
 class TodayEventView(APIView):
@@ -147,19 +149,20 @@ class TransactionView(APIView, PaginationHandlerMixin):
             first_date = f"{current_year}-01-01"
             return queryset.filter(created__range=[first_date, current_date])
 
+
     def get(self, request):
         current_user_id = request.user.id
-        parent_transactions = Transaction.objects \
-            .filter(active=True, parent=None) \
+        parent_transactions = Transaction.objects\
+            .filter(active=True, parent=None)\
             .prefetch_related(
-            'recipients',
-            'children',
-            'hashtags',
-        ).select_related(
-            'sender',
-            'created_by',
-            'updated_by',
-        )
+                'recipients',
+                'children',
+                'hashtags',
+            ).select_related(
+                'sender',
+                'created_by',
+                'updated_by',
+            )
 
         # Get query params from the get request
         sender_id = self.request.GET.get('sender', None)
@@ -172,33 +175,33 @@ class TransactionView(APIView, PaginationHandlerMixin):
         # Filter by date range
         if date_range:
             parent_transactions = self._filter_by_datetime(parent_transactions, date_range)
-
+        
         # Filter by sender
         if sender_id:
-            parent_transactions = parent_transactions \
+            parent_transactions = parent_transactions\
                 .filter(sender__id=sender_id)
 
         # Filter by recipeints
         if recipients_ids:
             recipients_ids_list = recipients_ids.split(',')
-            parent_transactions = parent_transactions \
+            parent_transactions = parent_transactions\
                 .filter(recipients__id__in=recipients_ids_list)
-
+        
         # Filter by key_params
         if key_param:
             if key_param == "popular":
                 # We are using annotate and Coalesce function to calculate the sum of 
                 # children and parent's points and add it to a new queryset 
                 # field total_points.
-                parent_transactions = parent_transactions \
+                parent_transactions = parent_transactions\
                     .annotate(
-                    total_points=F('point') + Coalesce(Sum('children__point'), 0)
-                ) \
+                        total_points=F('point') + Coalesce(Sum('children__point'), 0)
+                    )\
                     .order_by('-total_points')
             elif key_param == 'relevant':
-                parent_transactions = parent_transactions \
+                parent_transactions = parent_transactions\
                     .filter(
-                    Q(sender__id=current_user_id) |
+                    Q(sender__id=current_user_id) | 
                     Q(recipients__id=current_user_id)
                 )
 
@@ -206,15 +209,16 @@ class TransactionView(APIView, PaginationHandlerMixin):
         if hashtags_param:
             hashtags_names = hashtags_param.split(',')
 
-            parent_transactions = parent_transactions \
+            parent_transactions = parent_transactions\
                 .filter(hashtags__name__in=hashtags_names)
 
         # Pagination
         if pagination:
             parent_transactions = self.paginate_queryset(parent_transactions)
-
+        
         response_data = TransactionSerializer(parent_transactions, many=True).data
         return Response(response_data)
+
 
     def post(self, request):
         serializer = TransactionSerializer(data=request.data)
@@ -247,13 +251,14 @@ class TransactionView(APIView, PaginationHandlerMixin):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
     def patch(self, request):
         id = request.data.get("id", None)
 
         if not id:
             raise serializers.ValidationError({"id": "id is required."})
-
+        
         transaction_data = get_object_or_404(Transaction, id=id)
 
         serializer = TransactionSerializer(instance=transaction_data, data=request.data, partial=True)
@@ -277,42 +282,40 @@ class TransactionView(APIView, PaginationHandlerMixin):
         )
 
 
-#
-#
-# class PointsTransferListCreateView(generics.ListCreateAPIView):
-#     queryset = Transaction.objects.filter(active=True)
-#     serializer_class = TransactionSerializer
-#
-#     @db_transaction.atomic
-#     def perform_create(self, serializer):
-#         sender = self.request.user
-#         receivers_data = self.request.data.get('receivers', [])
-#
-#         total_points = int(self.request.data.get('points_available', 0))
-#
-#         num_receivers = len(receivers_data)
-#         points_per_receiver = total_points // num_receivers
-#         remaining_points = total_points % num_receivers
-#
-#         transfer = serializer.save(sender=sender, points_available=total_points)
-#
-#         for receiver_data in receivers_data:
-#             receiver_id = receiver_data.get('id')
-#             receiver = Account.objects.get(id=receiver_id)
-#
-#             points_to_receive = points_per_receiver
-#             if remaining_points > 0:
-#                 points_to_receive += 1
-#                 remaining_points -= 1
-#
-#             receiver.points_received += points_to_receive
-#             receiver.save()
-#
-#             transfer.receivers.add(receiver)
-#
-#         sender.points_available -= total_points
-#         sender.save()
-#
+class PointsTransferListCreateView(generics.ListCreateAPIView):
+    queryset = Transaction.objects.filter(active=True)
+    serializer_class = TransactionSerializer
+
+    @db_transaction.atomic
+    def perform_create(self, serializer):
+        sender = self.request.user
+        receivers_data = self.request.data.get('receivers', [])
+
+        total_points = int(self.request.data.get('points_available', 0))
+
+        num_receivers = len(receivers_data)
+        points_per_receiver = total_points // num_receivers
+        remaining_points = total_points % num_receivers
+
+        transfer = serializer.save(sender=sender, points_available=total_points)
+
+        for receiver_data in receivers_data:
+            receiver_id = receiver_data.get('id')
+            receiver = Account.objects.get(id=receiver_id)
+
+            points_to_receive = points_per_receiver
+            if remaining_points > 0:
+                points_to_receive += 1
+                remaining_points -= 1
+
+            receiver.points_received += points_to_receive
+            receiver.save()
+
+            transfer.receivers.add(receiver)
+
+        sender.points_available -= total_points
+        sender.save()
+
 
 # OLD CODE 
 """@authentication_classes([JWTAuthentication])

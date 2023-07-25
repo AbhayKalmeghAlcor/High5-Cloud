@@ -7,8 +7,8 @@ class HashtagAdmin(admin.ModelAdmin):
 
 
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('point', 'get_hashtags')
-    list_display_links = ('point',)
+    list_display = ('point',  'get_hashtags')
+    list_display_links = ('point', )
 
     def get_hashtags(self, obj):
         return ", ".join(hashtag.name for hashtag in obj.hashtags.all())
@@ -17,7 +17,7 @@ class TransactionAdmin(admin.ModelAdmin):
 
 
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('comment', 'react_by', 'created_by', 'active')
+    list_display = ('comment', 'created', 'react_by', 'created_by', 'active')
     list_display_links = ('comment',)
 
 
@@ -27,10 +27,10 @@ class PropertiesAdmin(admin.ModelAdmin):
 
 
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'company_type', 'description')
+    list_display = ('name', 'company_type', 'description', 'created_date')
     list_display_links = ('name',)
 
-
+#
 admin.site.register(Comments, CommentAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Properties, PropertiesAdmin)
