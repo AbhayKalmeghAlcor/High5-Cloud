@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get install -y libpq-dev gcc
 
 RUN mkdir -p /app/media
-RUN mkdir -p /app/staticfiles
+RUN mkdir -p /app/core/staticfiles
 
 # Set up env variables
 ENV PYTHONUNBUFFERED=1
