@@ -50,6 +50,18 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = ['id', 'children', 'point', 'recipients', 'sender', 'message', 
                   'hashtags', 'image', 'gif', 'link', 'active', 'flag_transaction', 
                   'react_by', 'created_by', 'created', 'updated_by']
+    
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['created_by'] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['updated_by'] = request.user
+        return super().update(instance, validated_data)
 
 
 class PropertiesSerializer(serializers.ModelSerializer):
