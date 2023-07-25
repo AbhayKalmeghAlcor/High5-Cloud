@@ -17,6 +17,7 @@ services:
       - 1337:80
     volumes:
       - media_volume:/app/media
+      - static_volume:/app/staticfiles
     depends_on:
       - backend
 volumes:
