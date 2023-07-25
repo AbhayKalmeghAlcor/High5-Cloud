@@ -10,6 +10,7 @@ services:
     volumes:
       - .:/app
       - media_volume:/app/media
+      - static_volume:/app/staticfiles
   nginx:
     build: ./nginx
     ports:
@@ -20,3 +21,4 @@ services:
       - backend
 volumes:
   media_volume:
+  static_volume:

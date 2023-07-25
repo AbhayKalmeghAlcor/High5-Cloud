@@ -5,7 +5,8 @@ FROM python:3.10-slim-bullseye
 RUN apt-get update && \
     apt-get install -y libpq-dev gcc
 
-RUN mkdir /app/media
+RUN mkdir -p /app/media
+RUN mkdir -p /app/staticfiles
 
 # Set up env variables
 ENV PYTHONUNBUFFERED=1
