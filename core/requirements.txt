@@ -39,3 +39,4 @@ yt-dlp==2023.7.6
 zipp==3.16.2
 zope.event==5.0
 zope.interface==6.0
+gunicorn==21.2.0

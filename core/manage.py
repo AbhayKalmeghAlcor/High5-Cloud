@@ -2,11 +2,24 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+MODE = os.environ.get('MODE', 'devel')
 
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+    if MODE == 'devel':
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.devel')
+    elif MODE == 'staging':
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.staging')
+    elif MODE == 'production':
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.production')
+    else:
+        raise ValueError(f"Invalid MODE environment variable: '{MODE}'")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
