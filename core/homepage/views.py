@@ -226,6 +226,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
         point = int(request.data.get('point', 0))
         hashtags_names = request.data.get('hashtags').split(",")
         parent_id = request.data.get('parent_id', None)
+        parent_transaction = None
 
         if parent_id:
             # Try to get the parent Transaction object
