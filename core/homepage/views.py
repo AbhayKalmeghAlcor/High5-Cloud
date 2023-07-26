@@ -245,13 +245,7 @@ class TransactionView(APIView, PaginationHandlerMixin):
         if not recipients_ids:
             return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create a new Transaction object with the validated data
-        transaction_data = {
-            'point': point,
-            'hashtags': hashtags_names,
-        }
-
-        serializer = TransactionSerializer(data=transaction_data, context={'request': request})
+        serializer = TransactionSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             # Update the related fields of the transaction manually
             transaction = serializer.save(sender=sender)
