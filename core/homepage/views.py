@@ -1,5 +1,10 @@
+import urllib.parse
+
 from datetime import timedelta, datetime, date
 
+
+from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction as db_transaction
 from django.db.models import Q, F, Count, Sum
 from django.db.models.functions import Coalesce
@@ -15,9 +20,10 @@ from rest_framework.views import APIView
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Transaction, Properties, Comments, Hashtag
+from homepage.models import Transaction, Properties, Comments, Hashtag, UserReaction, Reaction
 from homepage.paginations import CustomPagination, PaginationHandlerMixin
-from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer
+from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer,\
+    UserReactionWithUserInfoSerializer, UserReactionSerializer
 from homepage.utils import get_current_month_year, get_quaterly_dates, get_last_six_month
 
 
@@ -113,11 +119,11 @@ class TopEmployees(APIView):
         return Response(top_employees)
 
 
-@authentication_classes([JWTAuthentication])
+#@authentication_classes([JWTAuthentication])
 class TransactionView(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
 
     def _filter_by_datetime(self, queryset, date_range):
         if date_range == "all":
@@ -343,6 +349,53 @@ class PointsTransferListCreateView(generics.ListCreateAPIView):
 
         sender.points_available -= total_points
         sender.save()
+
+@authentication_classes([JWTAuthentication])
+class AddUserReactionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, format=None):
+        serializer = UserReactionSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            reaction_hash = serializer.initial_data.get('reaction_hash')
+            content_type_name = serializer.initial_data.get('content_type')
+            object_id = serializer.validated_data.get('object_id')
+
+            try:
+                reaction = Reaction.objects.get(reaction_hash=reaction_hash)
+            except Reaction.DoesNotExist:
+                return Response({'detail': 'Invalid reaction_hash.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if content_type_name.lower() in ['transaction', 'comments']:
+                content_type = ContentType.objects.get(model=content_type_name)
+
+            # Set the authenticated user as the creator
+            serializer.save(reaction=reaction, content_type=content_type, object_id=object_id, created_by=request.user)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+@authentication_classes([JWTAuthentication])
+class TransactionReactionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, transaction_id, reaction_hash=None, format=None):
+        reactions = UserReaction.objects\
+            .select_related('reaction', 'created_by', 'updated_by')\
+            .prefetch_related('content_type')\
+            .filter(
+            content_type__model='transaction', 
+            object_id=transaction_id
+        )
+
+        if reaction_hash:
+            reactions = reactions.filter(reaction__reaction_hash=reaction_hash)
+
+        serializer = UserReactionWithUserInfoSerializer(reactions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # OLD CODE 

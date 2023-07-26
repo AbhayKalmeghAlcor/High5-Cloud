@@ -1,9 +1,8 @@
-from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Company, Properties, Comments, Transaction, Hashtag
+from homepage.models import Company, Properties, Comments, Transaction, Hashtag, Reaction, UserReaction
 
 
 def validate_image_size(image):
@@ -12,6 +11,45 @@ def validate_image_size(image):
 
     if image.size > max_size:
         raise ValidationError(f"The maximum file size allowed is {max_size} bytes.")
+
+
+class ReactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reaction
+        fields = '__all__'
+
+
+class UserReactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserReaction
+        exclude = ('reaction', 'content_type', 'created_by')
+
+
+class UserReactionWithUserInfoSerializer(serializers.ModelSerializer):
+    user_full_name = serializers.SerializerMethodField()
+    user_role = serializers.SerializerMethodField()
+    user_department = serializers.SerializerMethodField()
+    content_type = serializers.SerializerMethodField()
+    reaction = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserReaction
+        fields = ('reaction', 'content_type', 'object_id', 'user_full_name', 'user_role', 'user_department')
+
+    def get_user_full_name(self, obj):
+        return obj.created_by.get_full_name()
+
+    def get_user_role(self, obj):
+        return obj.created_by.role
+
+    def get_user_department(self, obj):
+        return obj.created_by.department
+
+    def get_content_type(self, obj):
+        return obj.content_type.model
+    
+    def get_reaction(self, obj):
+        return obj.reaction.reaction_hash
 
 
 class CommentsSerializer(serializers.ModelSerializer):
@@ -39,6 +77,9 @@ class TransactionSerializer(serializers.ModelSerializer):
     created_by = AccountSubSerializer(read_only=True)
     updated_by = AccountSubSerializer(read_only=True)
     hashtags = HashtagSerializer(read_only=True, many=True)
+    latest_user_reaction_full_name = serializers.SerializerMethodField()
+    reaction_hashes = serializers.SerializerMethodField()
+    total_user_reaction_counts = serializers.SerializerMethodField()
 
     def get_children(self, transaction):
         children = Transaction.objects.filter(parent=transaction, active=True)
@@ -47,9 +88,11 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['id', 'children', 'point', 'recipients', 'sender', 'message', 
-                  'hashtags', 'image', 'gif', 'link', 'active', 'flag_transaction', 
-                  'react_by', 'created_by', 'created', 'updated_by']
+        fields = [
+            'id', 'children', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 
+            'gif', 'link', 'active', 'flag_transaction', 'react_by', 'created_by', 'created', 
+            'updated_by', 'latest_user_reaction_full_name', 'reaction_hashes', 'total_user_reaction_counts'
+        ]
     
     def create(self, validated_data):
         request = self.context.get('request')
@@ -62,6 +105,27 @@ class TransactionSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             validated_data['updated_by'] = request.user
         return super().update(instance, validated_data)
+    
+    def get_latest_user_reaction_full_name(self, obj):
+        latest_reaction = UserReaction.objects\
+            .filter(content_type__model='transaction', object_id=obj.id)\
+            .order_by('-created')\
+            .first()
+        if latest_reaction:
+            return latest_reaction.created_by.get_full_name()
+        return None
+
+    def get_reaction_hashes(self, obj):
+        reactions = UserReaction.objects\
+            .filter(content_type__model='transaction', object_id=obj.id)\
+            .values_list('reaction__reaction_hash', flat=True)
+        
+        return list(reactions)
+
+    def get_total_user_reaction_counts(self, obj):
+        return UserReaction.objects\
+            .filter(content_type__model='transaction', object_id=obj.id)\
+            .count()
 
 
 class PropertiesSerializer(serializers.ModelSerializer):
