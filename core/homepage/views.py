@@ -222,9 +222,9 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
     def post(self, request):
         sender_id = request.data.get('sender')
-        recipients_ids = request.data.get('recipients').split(",")
+        recipients_ids = request.data.getlist('recipients')
         point = int(request.data.get('point', 0))
-        hashtags_names = request.data.get('hashtags').split(",")
+        hashtags_names = request.data.getlist('hashtags')
         parent_id = request.data.get('parent_id', None)
         parent_transaction = None
 
