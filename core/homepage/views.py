@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Transaction, Properties, Comments
+from homepage.models import Transaction, Properties, Comments, Hashtag
 from homepage.paginations import CustomPagination, PaginationHandlerMixin
 from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer
 from homepage.utils import get_current_month_year, get_quaterly_dates, get_last_six_month
@@ -221,36 +221,69 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
 
     def post(self, request):
-        serializer = TransactionSerializer(data=request.data, context={'request': request})
+        sender_id = request.data.get('sender')
+        recipients_ids = request.data.get('recipients').split(",")
+        point = int(request.data.get('point', 0))
+        hashtags_names = request.data.get('hashtags').split(",")
+        parent_id = request.data.get('parent_id', None)
+
+        if parent_id:
+            # Try to get the parent Transaction object
+            parent_transaction = Transaction.objects.filter(id=parent_id).first()
+            if not parent_transaction:
+                return Response({'message': 'Parent Transaction not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the sender and check if it exists
+        sender = get_object_or_404(Account, id=sender_id)
+
+        # Check if sender has enough points
+        if sender.points_available < point:
+            return Response({'message': 'Insufficient points available.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if recipients are specified
+        if not recipients_ids:
+            return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a new Transaction object with the validated data
+        transaction_data = {
+            'point': point,
+            'hashtags': hashtags_names,
+        }
+
+        serializer = TransactionSerializer(data=transaction_data, context={'request': request})
         if serializer.is_valid():
+            # Update the related fields of the transaction manually
+            transaction = serializer.save(sender=sender)
+            transaction.recipients.set(recipients_ids)
 
-            sender_id = request.data.get('sender')
-            recipients_ids = request.data.getlist('recipients')
-            point = int(request.data.get('point', 0))
+            if parent_transaction:
+                transaction.parent = parent_transaction
 
-            sender = get_object_or_404(Account, id=sender_id)
-            if sender.points_available < point:
-                return Response({'message': 'Insufficient points available.'}, status=status.HTTP_400_BAD_REQUEST)
+            for hashtag in hashtags_names:
+                db_hashtag = get_object_or_404(Hashtag, name=hashtag)   
+                transaction.hashtags.add(db_hashtag)
 
-            if not recipients_ids:
-                return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
+            transaction.save()
 
             try:
                 with db_transaction.atomic():
-                    serializer.save()
-                    for recipient_id in recipients_ids:
-                        recipient = get_object_or_404(Account, id=recipient_id)
-                        recipient.points_received += point
-                        recipient.save()
+                    recipients_to_update = Account.objects\
+                        .filter(id__in=recipients_ids)\
+                        .update(points_received=F('points_received') + 10)
+
                     sender.points_available -= (point * len(recipients_ids))
                     sender.save()
 
             except Exception as e:
+                # Handle any exceptions during the transaction
                 return Response({'message': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            # Return the serialized data of the created Transaction object
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        # Return serializer errors if data is not valid
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 
     def patch(self, request):
