@@ -1,7 +1,16 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from accounts.models import Account
 from utils.models import BaseModel
+
+
+class Reaction(models.Model):
+    reaction_hash = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.reaction_hash
 
 
 class Hashtag(BaseModel):
@@ -29,7 +38,6 @@ class Transaction(BaseModel):
     link = models.CharField(max_length=500, null=True, blank=True)
     active = models.BooleanField(default=True)
     flag_transaction = models.BooleanField(default=False)
-    react_by = models.JSONField(default=dict, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Transaction'
@@ -40,11 +48,14 @@ class Transaction(BaseModel):
         return "%s %s %s" % (self.point, self.recipients, self.hashtags)
 
 
-class Comments(BaseModel):
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
+class Comment(BaseModel):
+    transaction = models.ForeignKey(
+        Transaction, 
+        on_delete=models.CASCADE, 
+        related_name="comments"
+    )
     active = models.BooleanField(default=True)
     comment = models.TextField(blank=True, null=True)
-    react_by = models.JSONField(default=dict)
     flagged_comment = models.BooleanField(default=False)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
@@ -53,8 +64,27 @@ class Comments(BaseModel):
         return self.comment
 
     class Meta:
-        verbose_name = 'comments'
-        verbose_name_plural = 'comments'
+        ordering = ('-created',)
+        verbose_name = 'Comment'
+        verbose_name_plural = 'Comments'
+
+
+class UserReaction(BaseModel):
+    reaction = models.ForeignKey(
+        Reaction, 
+        related_name="user_reactions", 
+        on_delete=models.CASCADE
+    )
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.UUIDField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        ordering = ("-created",)
+        unique_together = ('created_by', 'object_id', 'content_type')
+    
+    def __str__(self):
+        return f"UserReaction - ID: {self.pk}, Reaction: {self.reaction}, Content Type: {self.content_type}, Object ID: {self.object_id}"
 
 
 class Company(models.Model):

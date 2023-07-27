@@ -1,5 +1,10 @@
+import urllib.parse
+
 from datetime import timedelta, datetime, date
 
+
+from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction as db_transaction
 from django.db.models import Q, F, Count, Sum
 from django.db.models.functions import Coalesce
@@ -15,58 +20,16 @@ from rest_framework.views import APIView
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Transaction, Properties, Comments, Hashtag
+from homepage.models import Transaction, Properties, Comment, Hashtag, UserReaction, Reaction
 from homepage.paginations import CustomPagination, PaginationHandlerMixin
-from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentsSerializer, TransactionSerializer
+from homepage.serializers import PropertiesSerializer, PropertiesSubSerializer, CommentSerializer, TransactionSerializer,\
+    UserReactionWithUserInfoSerializer, UserReactionSerializer, UpdateUserReactionSerializer
 from homepage.utils import get_current_month_year, get_quaterly_dates, get_last_six_month
 
 
 class Index(generics.ListCreateAPIView):
     queryset = Transaction.objects.filter(active=True, parent=None)
     serializer_class =  TransactionSerializer
-
-
-class Comment(generics.ListCreateAPIView):
-    queryset = Comments.objects.all()
-    serializer_class = CommentsSerializer
-
-
-class CommentApi(APIView):
-    def get(self, request):
-        comment = request.user
-        serializer = CommentsSerializer(comment, many=False)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = CommentsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request):
-        idd = request.data.get("id", None)
-        if not idd:
-            raise serializers.ValidationError({"id": "id is required."})
-        transaction_data = get_object_or_404(Transaction, id=idd)
-        serializer = CommentsSerializer(instance=transaction_data, data=request.data, partial=True)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(
-                {
-                    "status": "Success",
-                    "code": 200,
-                    "message": "Successfully updated react data.",
-                    "response": serializer.data,
-                }, status=status.HTTP_200_OK
-            )
-        return Response(
-            {
-                "status": "Error",
-                "message": "Serializer validation error.",
-                "response": serializer.errors,
-            }, status=status.HTTP_400_BAD_REQUEST
-        )
 
 
 class Property(generics.ListCreateAPIView):
@@ -221,10 +184,11 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
 
     def post(self, request):
+        print(request.data)
         sender_id = request.data.get('sender')
-        recipients_ids = request.data.get('recipients').split(",")
+        recipients_ids = request.data.get('recipients', None)
         point = int(request.data.get('point', 0))
-        hashtags_names = request.data.get('hashtags').split(",")
+        hashtags_names = request.data.get('hashtags', None)
         parent_id = request.data.get('parent_id', None)
         parent_transaction = None
 
@@ -244,8 +208,20 @@ class TransactionView(APIView, PaginationHandlerMixin):
         # Check if recipients are specified
         if not recipients_ids:
             return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            recipients_ids = recipients_ids.split(",")
+        
+        # Check if hashtags are provided
+        if not hashtags_names:
+            return Response({'message': 'No hashtags specified.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            hashtags_names = hashtags_names.split(",")
+
+        if not point:
+            return Response({'message': 'Points need to be specified'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = TransactionSerializer(data=request.data, context={'request': request})
+
         if serializer.is_valid():
             # Update the related fields of the transaction manually
             transaction = serializer.save(sender=sender)
@@ -343,6 +319,112 @@ class PointsTransferListCreateView(generics.ListCreateAPIView):
 
         sender.points_available -= total_points
         sender.save()
+
+
+@authentication_classes([JWTAuthentication])
+class AddUserReactionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        serializer = UserReactionSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            reaction_hash = serializer.initial_data.get('reaction_hash')
+            content_type_name = serializer.initial_data.get('content_type')
+            object_id = serializer.validated_data.get('object_id')
+            content_type = None
+
+            try:
+                reaction = Reaction.objects.get(reaction_hash=reaction_hash)
+            except Reaction.DoesNotExist:
+                return Response({'detail': 'Invalid reaction_hash.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if content_type_name.lower() in ['transaction', 'comment']:
+                content_type = ContentType.objects.get(model=content_type_name)
+            else:
+                return Response({'detail': 'Invalid content_type.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Set the authenticated user as the creator
+            serializer.save(reaction=reaction, content_type=content_type, object_id=object_id, created_by=request.user)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+@authentication_classes([JWTAuthentication])
+class UpdateUserReaction(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request, user_reaction_id, format=None):
+        try:
+            user_reaction = UserReaction.objects.get(id=user_reaction_id, created_by=request.user)
+        except UserReaction.DoesNotExist:
+            return Response({'detail': 'UserReaction not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UpdateUserReactionSerializer(user_reaction, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            reaction_hash = serializer.initial_data.get('reaction_hash')
+
+            try:
+                reaction = Reaction.objects.get(reaction_hash=reaction_hash)
+                serializer.validated_data['reaction'] = reaction
+            except Reaction.DoesNotExist:
+                return Response({'detail': 'Invalid reaction_hash.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@authentication_classes([JWTAuthentication])
+class TransactionReactionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, transaction_id, reaction_hash=None, format=None):
+        reactions = UserReaction.objects\
+            .select_related('reaction', 'created_by', 'updated_by')\
+            .prefetch_related('content_type')\
+            .filter(
+            content_type__model='transaction', 
+            object_id=transaction_id
+        )
+
+        if reaction_hash:
+            reactions = reactions.filter(reaction__reaction_hash=reaction_hash)
+
+        serializer = UserReactionWithUserInfoSerializer(reactions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+@authentication_classes([JWTAuthentication])
+class CommentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, transaction_id, format=None):
+        comments = Comment.objects\
+            .select_related('transaction')\
+            .filter(transaction_id=transaction_id)
+        
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, transaction_id, format=None):
+        try:
+            transaction = Transaction.objects.get(pk=transaction_id)
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CommentSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(transaction=transaction, created_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # OLD CODE 
@@ -483,4 +565,42 @@ class Transaction(APIView, PaginationHandlerMixin):
                 "message": "Serializer validation error.",
                 "response": serializer.errors,
             }, status=status.HTTP_400_BAD_REQUEST
-        )"""
+        )
+        
+        class CommentApi(APIView):
+    def get(self, request):
+        comment = request.user
+        serializer = CommentSerializer(comment, many=False)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        idd = request.data.get("id", None)
+        if not idd:
+            raise serializers.ValidationError({"id": "id is required."})
+        transaction_data = get_object_or_404(Transaction, id=idd)
+        serializer = CommentSerializer(instance=transaction_data, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(
+                {
+                    "status": "Success",
+                    "code": 200,
+                    "message": "Successfully updated react data.",
+                    "response": serializer.data,
+                }, status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                "status": "Error",
+                "message": "Serializer validation error.",
+                "response": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST
+        )
+        """
