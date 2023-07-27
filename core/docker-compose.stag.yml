@@ -9,14 +9,14 @@ services:
       - 8000
     volumes:
       - .:/app
-      - media_volume:/app/media
+      - media_volume:/app/core/media
       - static_volume:/app/core/staticfiles
   nginx:
     build: ./nginx
     ports:
       - 80:80
     volumes:
-      - media_volume:/app/media
+      - media_volume:/app/core/media
       - static_volume:/app/core/staticfiles
     depends_on:
       - backend
