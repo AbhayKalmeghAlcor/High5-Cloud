@@ -38,7 +38,6 @@ class Transaction(BaseModel):
     link = models.CharField(max_length=500, null=True, blank=True)
     active = models.BooleanField(default=True)
     flag_transaction = models.BooleanField(default=False)
-    react_by = models.JSONField(default=dict, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Transaction'
@@ -49,11 +48,14 @@ class Transaction(BaseModel):
         return "%s %s %s" % (self.point, self.recipients, self.hashtags)
 
 
-class Comments(BaseModel):
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
+class Comment(BaseModel):
+    transaction = models.ForeignKey(
+        Transaction, 
+        on_delete=models.CASCADE, 
+        related_name="comments"
+    )
     active = models.BooleanField(default=True)
     comment = models.TextField(blank=True, null=True)
-    react_by = models.JSONField(default=dict)
     flagged_comment = models.BooleanField(default=False)
     image = models.ImageField(upload_to='photos/user_form', null=True, blank=True)
     gif = models.CharField(max_length=500, null=True, blank=True)
@@ -62,8 +64,9 @@ class Comments(BaseModel):
         return self.comment
 
     class Meta:
-        verbose_name = 'comments'
-        verbose_name_plural = 'comments'
+        ordering = ('-created',)
+        verbose_name = 'Comment'
+        verbose_name_plural = 'Comments'
 
 
 class UserReaction(BaseModel):
@@ -77,6 +80,7 @@ class UserReaction(BaseModel):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     class Meta:
+        ordering = ("-created",)
         unique_together = ('created_by', 'object_id', 'content_type')
     
     def __str__(self):

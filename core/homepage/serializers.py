@@ -2,15 +2,7 @@ from rest_framework import serializers
 
 from accounts.models import Account
 from accounts.serializers import AccountSubSerializer
-from homepage.models import Company, Properties, Comments, Transaction, Hashtag, Reaction, UserReaction
-
-
-def validate_image_size(image):
-    # Maximum allowed file size in bytes (e.g., 2MB)
-    max_size = 3 * 1024 * 1024
-
-    if image.size > max_size:
-        raise ValidationError(f"The maximum file size allowed is {max_size} bytes.")
+from homepage.models import Company, Properties, Comment, Transaction, Hashtag, Reaction, UserReaction
 
 
 class ReactionSerializer(serializers.ModelSerializer):
@@ -51,11 +43,10 @@ class UserReactionWithUserInfoSerializer(serializers.ModelSerializer):
     def get_reaction(self, obj):
         return obj.reaction.reaction_hash
 
-
-class CommentsSerializer(serializers.ModelSerializer):
+class UpdateUserReactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Comments
-        fields = '__all__'
+        model = UserReaction
+        fields = ('reaction',)
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -70,6 +61,31 @@ class HashtagSerializer(serializers.ModelSerializer):
         fields = ['name']
 
 
+class CommentSerializer(serializers.ModelSerializer):
+    reaction_hashes = serializers.SerializerMethodField()
+    total_reaction_counts = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = (
+            'comment', 'image', 'gif', 'reaction_hashes',
+            'total_reaction_counts'
+        )
+
+    def get_reaction_hashes(self, obj):
+        reactions = UserReaction.objects\
+            .filter(content_type__model='comment', object_id=obj.id)\
+            .values_list('reaction__reaction_hash', flat=True)
+
+        return list(reactions)
+
+
+    def get_total_reaction_counts(self, obj):
+        return UserReaction.objects\
+            .filter(content_type__model='comment', object_id=obj.id)\
+            .count()
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField('get_children')
     recipients = AccountSubSerializer(many=True, read_only=True)
@@ -80,6 +96,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     latest_user_reaction_full_name = serializers.SerializerMethodField()
     reaction_hashes = serializers.SerializerMethodField()
     total_user_reaction_counts = serializers.SerializerMethodField()
+    comments = CommentSerializer(many=True, read_only=True)
 
     def get_children(self, transaction):
         children = Transaction.objects.filter(parent=transaction, active=True)
@@ -90,8 +107,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = [
             'id', 'children', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 
-            'gif', 'link', 'active', 'flag_transaction', 'react_by', 'created_by', 'created', 
-            'updated_by', 'latest_user_reaction_full_name', 'reaction_hashes', 'total_user_reaction_counts'
+            'gif', 'link', 'active', 'flag_transaction', 'created_by', 'created', 
+            'updated_by', 'latest_user_reaction_full_name', 'reaction_hashes', 
+            'total_user_reaction_counts', 'comments'
         ]
     
     def create(self, validated_data):
@@ -126,7 +144,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         return UserReaction.objects\
             .filter(content_type__model='transaction', object_id=obj.id)\
             .count()
-
+    
 
 class PropertiesSerializer(serializers.ModelSerializer):
     company = CompanySerializer()

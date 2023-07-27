@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Transaction, Properties, Company, Comments, Hashtag, UserReaction, Reaction
+from .models import Transaction, Properties, Company, Comment, Hashtag, UserReaction, Reaction
 
 class UserReactionsAdmin(admin.ModelAdmin):
     list_display = ['id', 'reaction', 'content_type', 'object_id', 'created_by', 'created']
@@ -25,7 +25,7 @@ class TransactionAdmin(admin.ModelAdmin):
 
 
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('comment', 'created', 'react_by', 'created_by', 'active')
+    list_display = ('comment', 'created', 'created_by', 'active')
     list_display_links = ('comment',)
 
 
@@ -39,7 +39,7 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display_links = ('name',)
 
 
-admin.site.register(Comments, CommentAdmin)
+admin.site.register(Comment, CommentAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Properties, PropertiesAdmin)
 admin.site.register(Company, CompanyAdmin)
