@@ -184,10 +184,11 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
 
     def post(self, request):
+        print(request.data)
         sender_id = request.data.get('sender')
-        recipients_ids = request.data.get('recipients').split(",")
+        recipients_ids = request.data.get('recipients', None)
         point = int(request.data.get('point', 0))
-        hashtags_names = request.data.get('hashtags').split(",")
+        hashtags_names = request.data.get('hashtags', None)
         parent_id = request.data.get('parent_id', None)
         parent_transaction = None
 
@@ -207,8 +208,20 @@ class TransactionView(APIView, PaginationHandlerMixin):
         # Check if recipients are specified
         if not recipients_ids:
             return Response({'message': 'No recipients specified.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            recipients_ids = recipients_ids.split(",")
+        
+        # Check if hashtags are provided
+        if not hashtags_names:
+            return Response({'message': 'No hashtags specified.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            hashtags_names = hashtags_names.split(",")
+
+        if not point:
+            return Response({'message': 'Points need to be specified'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = TransactionSerializer(data=request.data, context={'request': request})
+
         if serializer.is_valid():
             # Update the related fields of the transaction manually
             transaction = serializer.save(sender=sender)
@@ -362,7 +375,7 @@ class UpdateUserReaction(APIView):
                 return Response({'detail': 'Invalid reaction_hash.'}, status=status.HTTP_400_BAD_REQUEST)
             
             serializer.save()
-            
+
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
