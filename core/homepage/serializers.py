@@ -70,7 +70,8 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = (
             'comment', 'image', 'gif', 'reaction_hashes',
-            'total_reaction_counts', 'created_by', 'created', 'updated'
+            'total_reaction_counts', 'created_by', 'created', 'updated',
+            'id'
         )
 
     def get_reaction_hashes(self, obj):
