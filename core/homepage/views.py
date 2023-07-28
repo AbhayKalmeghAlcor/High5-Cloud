@@ -6,7 +6,7 @@ from datetime import timedelta, datetime, date
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction as db_transaction
-from django.db.models import Q, F, Count, Sum
+from django.db.models import Q, F, Count, Sum, OuterRef, Subquery, Exists
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -81,6 +81,52 @@ class TransactionView(APIView, PaginationHandlerMixin):
     pagination_class = CustomPagination
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+
+        queryset = Transaction.objects\
+            .prefetch_related(
+                'recipients',
+                'children',
+                'hashtags',
+            ).select_related(
+                'sender',
+                'created_by',
+                'updated_by',
+            ).filter(active=True, parent=None)
+
+        # This is a OuterRef query to prevent duplicate queries
+        latest_reaction = UserReaction.objects.filter(object_id=OuterRef('id')).order_by('-created')[:1]
+
+        # A complex annotate query, we are just annotating the values from the above
+        # OuterReference query. So that we dont have to fetch the same data again and again.
+        queryset = queryset\
+            .annotate(
+                latest_user_reaction_first_name=Subquery(
+                    latest_reaction.values('created_by__first_name')
+                ),
+                latest_user_reaction_last_name=Subquery(
+                    latest_reaction.values('created_by__last_name')
+                ),
+                reaction_hashes=Subquery(
+                    UserReaction.objects\
+                        .filter(object_id=OuterRef('id'))\
+                        .values('reaction__reaction_hash')
+                ),
+                total_reaction_counts=Subquery(
+                    UserReaction.objects\
+                        .filter(object_id=OuterRef('id'))\
+                        .annotate(count=Count('id'))\
+                        .values('count')
+                ),
+                is_reacted=Exists(
+                    UserReaction.objects\
+                        .filter(created_by=user, object_id=OuterRef('id'))
+                )
+            )
+
+        return queryset
 
     def _filter_by_datetime(self, queryset, date_range):
         if date_range == "all":
@@ -115,17 +161,8 @@ class TransactionView(APIView, PaginationHandlerMixin):
 
     def get(self, request):
         current_user_id = request.user.id
-        parent_transactions = Transaction.objects\
-            .filter(active=True, parent=None)\
-            .prefetch_related(
-                'recipients',
-                'children',
-                'hashtags',
-            ).select_related(
-                'sender',
-                'created_by',
-                'updated_by',
-            )
+        parent_transactions = self.get_queryset()
+            
 
         # Get query params from the get request
         sender_id = self.request.GET.get('sender', None)
@@ -357,9 +394,9 @@ class AddUserReactionAPIView(APIView):
 @authentication_classes([JWTAuthentication])
 class UpdateUserReaction(APIView):
     permission_classes = [IsAuthenticated]
-    def patch(self, request, user_reaction_id, format=None):
+    def patch(self, request, object_id, format=None):
         try:
-            user_reaction = UserReaction.objects.get(id=user_reaction_id, created_by=request.user)
+            user_reaction = UserReaction.objects.get(object_id=object_id, created_by=request.user)
         except UserReaction.DoesNotExist:
             return Response({'detail': 'UserReaction not found.'}, status=status.HTTP_404_NOT_FOUND)
 
