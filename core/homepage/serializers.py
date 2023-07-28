@@ -70,7 +70,7 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = (
             'comment', 'image', 'gif', 'reaction_hashes',
-            'total_reaction_counts', 'created_by'
+            'total_reaction_counts', 'created_by', 'created', 'updated'
         )
 
     def get_reaction_hashes(self, obj):
@@ -122,22 +122,24 @@ class TransactionSerializer(serializers.ModelSerializer):
     updated_by = AccountSubSerializer(read_only=True)
     hashtags = HashtagSerializer(read_only=True, many=True)
     comments = CommentSerializer(many=True, read_only=True)
-    user_reaction_info = serializers.SerializerMethodField()
+    user_reaction_info = serializers.SerializerMethodField(read_only=True)
 
     def get_user_reaction_info(self, instance):
         user_full_name = None
+        if not instance.created:
+            if instance.latest_user_reaction_first_name:
+                user_full_name = instance.latest_user_reaction_first_name
+            if instance.latest_user_reaction_last_name:
+                user_full_name += " " + instance.latest_user_reaction_last_name
 
-        if instance.latest_user_reaction_first_name:
-            user_full_name = instance.latest_user_reaction_first_name
-        if instance.latest_user_reaction_last_name:
-            user_full_name += " " + instance.latest_user_reaction_last_name
-
-        return {
-            'latest_user_reaction_full_name': user_full_name,
-            'reaction_hashes': instance.reaction_hashes,
-            'total_reaction_counts': instance.total_reaction_counts,
-            'is_reacted': instance.is_reacted,
-        }
+            return {
+                'latest_user_reaction_full_name': user_full_name,
+                'reaction_hashes': instance.reaction_hashes,
+                'total_reaction_counts': instance.total_reaction_counts,
+                'is_reacted': instance.is_reacted,
+            }
+        else:
+            return "not available"
 
     def get_children(self, transaction):
         children = Transaction.objects.filter(parent=transaction, active=True)
