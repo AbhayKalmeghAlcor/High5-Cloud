@@ -14,5 +14,5 @@ urlpatterns = [
     path('transaction-reactions/<uuid:transaction_id>/', TransactionReactionAPIView.as_view(), name='transaction-reactions'),
     path('transaction-reactions/<uuid:transaction_id>/<str:reaction_hash>/', TransactionReactionAPIView.as_view(), name='transaction-reactions-with-reaction-hash'),
     path('add-reaction/', AddUserReactionAPIView.as_view(), name='add-reaction'),
-    path('update-user-reaction/<uuid:user_reaction_id>/', UpdateUserReaction.as_view(), name="update-user-reaction"),
+    path('update-user-reaction/<uuid:object_id>/', UpdateUserReaction.as_view(), name="update-user-reaction"),
 ]

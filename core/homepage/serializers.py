@@ -86,6 +86,33 @@ class CommentSerializer(serializers.ModelSerializer):
             .count()
 
 
+class ChildTransactionSerializer(serializers.ModelSerializer):
+    recipients = AccountSubSerializer(many=True, read_only=True)
+    sender = AccountSubSerializer(read_only=True)
+    hashtags = HashtagSerializer(read_only=True, many=True)
+    comments = CommentSerializer(many=True, read_only=True)
+    user_reaction_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'id', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 
+            'gif', 'link', 'active', 'flag_transaction', 'created', 'comments', 'user_reaction_info'
+        ]
+
+    def get_user_reaction_info(self, instance):
+        queryset = UserReaction.objects\
+            .filter(content_type__model='transaction', object_id=instance.id)
+        count = queryset.count()
+        reaction_hashes = queryset\
+            .values_list('reaction__reaction_hash', flat=True)
+        
+        return {
+            'reaction_hashes': list(reaction_hashes),
+            'total_reaction_count': count
+        }
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField('get_children')
     recipients = AccountSubSerializer(many=True, read_only=True)
@@ -93,14 +120,27 @@ class TransactionSerializer(serializers.ModelSerializer):
     created_by = AccountSubSerializer(read_only=True)
     updated_by = AccountSubSerializer(read_only=True)
     hashtags = HashtagSerializer(read_only=True, many=True)
-    latest_user_reaction_full_name = serializers.SerializerMethodField()
-    reaction_hashes = serializers.SerializerMethodField()
-    total_user_reaction_counts = serializers.SerializerMethodField()
     comments = CommentSerializer(many=True, read_only=True)
+    user_reaction_info = serializers.SerializerMethodField()
+
+    def get_user_reaction_info(self, instance):
+        user_full_name = None
+
+        if instance.latest_user_reaction_first_name:
+            user_full_name = instance.latest_user_reaction_first_name
+        if instance.latest_user_reaction_last_name:
+            user_full_name += " " + instance.latest_user_reaction_last_name
+
+        return {
+            'latest_user_reaction_full_name': user_full_name,
+            'reaction_hashes': instance.reaction_hashes,
+            'total_reaction_counts': instance.total_reaction_counts,
+            'is_reacted': instance.is_reacted,
+        }
 
     def get_children(self, transaction):
         children = Transaction.objects.filter(parent=transaction, active=True)
-        serializer = TransactionSerializer(children, many=True)
+        serializer = ChildTransactionSerializer(children, many=True)
         return serializer.data
 
     class Meta:
@@ -108,8 +148,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'children', 'point', 'recipients', 'sender', 'message', 'hashtags', 'image', 
             'gif', 'link', 'active', 'flag_transaction', 'created_by', 'created', 
-            'updated_by', 'latest_user_reaction_full_name', 'reaction_hashes', 
-            'total_user_reaction_counts', 'comments'
+            'updated_by', 'comments', 'user_reaction_info'
         ]
     
     def create(self, validated_data):
@@ -123,27 +162,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             validated_data['updated_by'] = request.user
         return super().update(instance, validated_data)
-    
-    def get_latest_user_reaction_full_name(self, obj):
-        latest_reaction = UserReaction.objects\
-            .filter(content_type__model='transaction', object_id=obj.id)\
-            .order_by('-created')\
-            .first()
-        if latest_reaction:
-            return latest_reaction.created_by.get_full_name()
-        return None
-
-    def get_reaction_hashes(self, obj):
-        reactions = UserReaction.objects\
-            .filter(content_type__model='transaction', object_id=obj.id)\
-            .values_list('reaction__reaction_hash', flat=True)
-        
-        return list(reactions)
-
-    def get_total_user_reaction_counts(self, obj):
-        return UserReaction.objects\
-            .filter(content_type__model='transaction', object_id=obj.id)\
-            .count()
     
 
 class PropertiesSerializer(serializers.ModelSerializer):
