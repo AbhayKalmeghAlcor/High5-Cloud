@@ -64,12 +64,13 @@ class HashtagSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     reaction_hashes = serializers.SerializerMethodField()
     total_reaction_counts = serializers.SerializerMethodField()
+    created_by = AccountSubSerializer(read_only=True)
 
     class Meta:
         model = Comment
         fields = (
             'comment', 'image', 'gif', 'reaction_hashes',
-            'total_reaction_counts'
+            'total_reaction_counts', 'created_by'
         )
 
     def get_reaction_hashes(self, obj):
